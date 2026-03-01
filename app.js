@@ -36,12 +36,22 @@ window.addEventListener('DOMContentLoaded', () => {
   }, 2200);
 });
 
+// ─── FIREBASE CONFIG (hardcoded — works on all devices automatically) ──────
+const FIREBASE_CFG = {
+  apiKey: "AIzaSyDPlNBmoYHUN8Ao-6j08Ez8HC0wnGWw2q8",
+  authDomain: "bus-alert-3941d.firebaseapp.com",
+  databaseURL: "https://bus-alert-3941d-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "bus-alert-3941d",
+  storageBucket: "bus-alert-3941d.firebasestorage.app",
+  messagingSenderId: "313411935231",
+  appId: "1:313411935231:web:24d20abfcc5609d35525ca"
+};
+
 function boot() {
   loadLocal();
   reqNotifPerm();
-  const cfg = loadFbCfg();
-  if (cfg) loadFbSdk(() => connectFb(cfg));
-  else showToast('⚠️ Firebase not connected — Tap Driver/Track to set up.');
+  // Always connect using hardcoded config — no manual setup needed
+  loadFbSdk(() => connectFb(FIREBASE_CFG));
 }
 
 // ─── PERSISTENCE ─────────────────────────────────────────────────
