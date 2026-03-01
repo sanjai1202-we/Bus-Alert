@@ -161,7 +161,12 @@ function renderBusList(query) {
   const ql = query.toLowerCase();
   const list = q('#bus-list'), empty = q('#bus-empty');
   const matches = Object.entries(S.allBuses).filter(([, b]) => {
-    if (!b.active) return false;
+    if (!b.active || !b.location?.timestamp) return false;
+
+    // Only show if updated in the last 15 minutes
+    const isStale = (Date.now() - b.location.timestamp) > 15 * 60 * 1000;
+    if (isStale) return false;
+
     return (b.route || '').toLowerCase().includes(ql)
       || (b.busNumber || '').toLowerCase().includes(ql)
       || (b.stops || []).some(s => s.toLowerCase().includes(ql));
@@ -537,15 +542,27 @@ function stopDriver() {
   showToast('⏹ Location sharing stopped.');
 }
 
+let _lastMoved, _lastLat, _lastLon;
 function onDriverPos(pos) {
   if (!S.driverOn) return;
   const { latitude: lat, longitude: lon, accuracy } = pos.coords;
+  const now = Date.now();
+
+  // Auto-Stop check (Parked for > 20 mins)
+  const moved = getDistance(lat, lon, _lastLat || lat, _lastLon || lon) > 0.05; // 50m
+  if (moved || !_lastMoved) {
+    _lastMoved = now; _lastLat = lat; _lastLon = lon;
+  } else if (now - _lastMoved > 20 * 60 * 1000) {
+    showToast('⏹ Auto-stop: Bus stationary for 20m.');
+    stopDriver(); return;
+  }
+
   S.driverUpdates++;
   q('#dlc-updates').textContent = S.driverUpdates;
   q('#dlc-accuracy').textContent = Math.round(accuracy);
   q('#dlc-time').textContent = new Date().toLocaleTimeString();
   q('#dlc-coords').textContent = `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
-  S.db.ref(`buses/${S.driverBusId}/location`).set({ lat, lon, accuracy, timestamp: Date.now() });
+  S.db.ref(`buses/${S.driverBusId}/location`).set({ lat, lon, accuracy, timestamp: now });
 }
 
 // ─── GEO HELPERS ─────────────────────────────────────────────────

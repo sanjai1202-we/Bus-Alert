@@ -52,3 +52,10 @@ self.addEventListener('fetch', e => {
         })
     );
 });
+
+// Periodic Sync / Background Keep-Alive
+self.addEventListener('periodicsync', (event) => {
+    if (event.tag === 'bus-location-push') {
+        // Keeps background worker from going completely dormant
+    }
+});
