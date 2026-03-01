@@ -620,3 +620,55 @@ function showToast(msg) {
   clearTimeout(_tt);
   _tt = setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.classList.add('hidden'), 400); }, 3500);
 }
+
+// ─── SERVICE WORKER + PWA INSTALL ────────────────────────────────
+let _installPrompt = null;
+
+// Register service worker
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js')
+      .then(reg => console.log('✅ SW registered', reg.scope))
+      .catch(err => console.log('SW error:', err));
+  });
+}
+
+// Catch the install prompt (Android Chrome)
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  _installPrompt = e;
+  // Show the install banner after 3 seconds
+  setTimeout(() => {
+    const banner = q('#install-banner');
+    if (banner) banner.classList.remove('hidden');
+  }, 3000);
+});
+
+// User tapped "Install App"
+function doInstall() {
+  if (_installPrompt) {
+    _installPrompt.prompt();
+    _installPrompt.userChoice.then(result => {
+      if (result.outcome === 'accepted') {
+        showToast('🎉 BusAlert installed!');
+      }
+      _installPrompt = null;
+      dismissInstall();
+    });
+  } else {
+    // iOS fallback — show manual instructions
+    showToast('On iPhone: tap Share → "Add to Home Screen"');
+    dismissInstall();
+  }
+}
+
+function dismissInstall() {
+  const banner = q('#install-banner');
+  if (banner) banner.classList.add('hidden');
+}
+
+// Hide banner if already installed
+window.addEventListener('appinstalled', () => {
+  dismissInstall();
+  showToast('✅ BusAlert is installed as an app!');
+});

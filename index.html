@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <meta name="apple-mobile-web-app-title" content="BusAlert" />
     <title>BusAlert — Live Bus Tracker</title>
     <meta name="description"
         content="Track your college bus live on a map. Sleep mode alerts you when near your stop." />
@@ -359,6 +360,21 @@
     </div>
 
     <div id="toast" class="toast hidden"></div>
+
+    <!-- Install App Banner -->
+    <div id="install-banner" class="install-banner hidden">
+        <div class="install-content">
+            <span class="install-icon">🚌</span>
+            <div class="install-text">
+                <strong>Install BusAlert</strong>
+                <span>Add to home screen for quick access</span>
+            </div>
+        </div>
+        <div class="install-actions">
+            <button class="install-dismiss" onclick="dismissInstall()">Not now</button>
+            <button class="install-btn" onclick="doInstall()">Install App</button>
+        </div>
+    </div>
 
     <script src="app.js"></script>
 </body>

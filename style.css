@@ -1345,6 +1345,82 @@ body {
   transform: translateX(-50%) translateY(0);
 }
 
+/* ── Install Banner ── */
+.install-banner {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, .1);
+  padding: 14px 16px;
+  z-index: 9000;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: slideUp .4s cubic-bezier(.34, 1.56, .64, 1);
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.install-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.install-icon {
+  font-size: 2rem;
+}
+
+.install-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.install-text strong {
+  font-size: .95rem;
+  font-weight: 700;
+}
+
+.install-text span {
+  font-size: .78rem;
+  color: var(--muted2);
+}
+
+.install-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.install-dismiss {
+  flex: 1;
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border);
+  background: none;
+  font-family: var(--font);
+  font-size: .83rem;
+  font-weight: 600;
+  color: var(--muted2);
+  cursor: pointer;
+}
+
+.install-btn {
+  flex: 2;
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: var(--primary);
+  color: white;
+  font-family: var(--font);
+  font-size: .83rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 /* ── Scrollbar ── */
 ::-webkit-scrollbar {
   width: 4px;
