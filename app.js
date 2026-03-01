@@ -17,6 +17,8 @@ const S = {
 
   // Driver
   driverOn: false, driverWid: null, driverBusId: null, driverUpdates: 0,
+  savedBuses: [],
+
 
   // Map
   map: null,
@@ -55,18 +57,17 @@ function boot() {
 }
 
 // ─── PERSISTENCE ─────────────────────────────────────────────────
+function lsSet(k, v) { localStorage.setItem(k, v); }
+function loadFbCfg() { return ls('ba_fb'); }
+
 function loadLocal() {
   const h = ls('ba_home'); if (h) { S.home = h; renderHomeCoord(); }
   const s = ls('ba_stop'); if (s) { S.stopLoc = s; renderStopCoord(); }
   const sr = lsGet('ba_sr'); if (sr) { q('#sleep-radius').value = sr; updateRadius('sleep'); }
   const tr = lsGet('ba_tr'); if (tr) { q('#track-radius').value = tr; updateRadius('track'); }
+  const sb = ls('ba_saved_buses'); if (sb) { S.savedBuses = sb; renderSavedBuses(); }
 }
 
-function ls(k) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch { return null; } }
-function lsSave(k, v) { localStorage.setItem(k, JSON.stringify(v)); }
-function lsGet(k) { return localStorage.getItem(k); }
-function lsSet(k, v) { localStorage.setItem(k, v); }
-function loadFbCfg() { return ls('ba_fb'); }
 
 // ─── FIREBASE ────────────────────────────────────────────────────
 function loadFbSdk(cb) {
@@ -512,7 +513,13 @@ function startDriver() {
   if (!num || !route) { showToast('⚠️ Enter bus number and route!'); return; }
   if (!S.fbOk) { openModal(); return; }
 
+  // Save profile if checked
+  if (q('#driver-save-check').checked) {
+    saveBusProfile(num, route, stops);
+  }
+
   S.driverBusId = 'bus_' + num.replace(/\s+/g, '_').toUpperCase() + '_' + Date.now();
+
   S.driverUpdates = 0;
 
   S.db.ref(`buses/${S.driverBusId}`).set({ busNumber: num, route, stops, active: true, location: null, startedAt: Date.now() })
@@ -648,7 +655,47 @@ function showToast(msg) {
   _tt = setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.classList.add('hidden'), 400); }, 3500);
 }
 
+// ─── SAVED BUS PROFILES logic ──────────────────────────────────────
+function saveBusProfile(num, route, stops) {
+  const exists = S.savedBuses.findIndex(b => b.num === num && b.route === route);
+  const profile = { num, route, stops };
+  if (exists > -1) S.savedBuses[exists] = profile;
+  else S.savedBuses.unshift(profile);
+  if (S.savedBuses.length > 5) S.savedBuses.pop();
+  lsSave('ba_saved_buses', S.savedBuses);
+  renderSavedBuses();
+}
+
+function renderSavedBuses() {
+  const list = q('#saved-buses-list');
+  const section = q('#saved-buses-section');
+  if (!S.savedBuses.length) { section?.classList.add('hidden'); return; }
+  section?.classList.remove('hidden');
+  list.innerHTML = S.savedBuses.map((b, i) => `
+    <div class="saved-pill" onclick="useSavedBus(${i})">
+      🚌 ${esc(b.num)}
+      <span class="del-saved" onclick="event.stopPropagation();deleteSavedBus(${i})">✕</span>
+    </div>
+  `).join('');
+}
+
+function useSavedBus(idx) {
+  const b = S.savedBuses[idx];
+  if (!b) return;
+  q('#driver-bus-num').value = b.num;
+  q('#driver-route').value = b.route;
+  q('#driver-stops').value = b.stops.join(', ');
+  showToast(`📝 Loaded: Bus ${b.num}`);
+}
+
+function deleteSavedBus(idx) {
+  S.savedBuses.splice(idx, 1);
+  lsSave('ba_saved_buses', S.savedBuses);
+  renderSavedBuses();
+}
+
 // ─── SERVICE WORKER + PWA INSTALL ────────────────────────────────
+
 let _installPrompt = null;
 
 // Register service worker

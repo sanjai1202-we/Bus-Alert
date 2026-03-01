@@ -275,6 +275,14 @@
 
             <!-- Bus info form (hidden when live) -->
             <div id="driver-form">
+                <!-- Saved Profiles -->
+                <div id="saved-buses-section" class="block hidden" style="margin-bottom: 20px;">
+                    <div class="block-label">Your Saved Profiles</div>
+                    <div id="saved-buses-list" class="saved-list">
+                        <!-- Saved pills go here -->
+                    </div>
+                </div>
+
                 <div class="block">
                     <div class="block-label">Bus Number</div>
                     <input type="text" id="driver-bus-num" class="field" placeholder="e.g.  TN 23 AB 1234" />
@@ -287,6 +295,13 @@
                     <div class="block-label">Stops (comma separated)</div>
                     <input type="text" id="driver-stops" class="field"
                         placeholder="e.g.  Ambur, Vaniyambadi, Pernambut, Vellore" />
+                </div>
+
+                <div class="toggle-item"
+                    style="margin-top: 10px; border-top: 1px solid var(--border); padding-top: 15px;">
+                    <span style="font-size: 0.9rem; font-weight: 600;">Save these details for next time</span>
+                    <label class="tog"><input type="checkbox" id="driver-save-check" checked /><span
+                            class="tog-slider"></span></label>
                 </div>
             </div>
 

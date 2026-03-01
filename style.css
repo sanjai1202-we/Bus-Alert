@@ -1345,6 +1345,46 @@ body {
   transform: translateX(-50%) translateY(0);
 }
 
+/* ── Saved Bus Profiles ── */
+.saved-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.saved-pill {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 6px 12px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--primary);
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.saved-pill:hover {
+  background: var(--bg);
+  border: 1px solid var(--primary);
+}
+
+.saved-pill .del-saved {
+  color: #f87171;
+  font-size: 0.75rem;
+  padding: 2px 4px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.saved-pill .del-saved:hover {
+  background: #fee2e2;
+}
+
 /* ── Install Banner ── */
 .install-banner {
   position: fixed;
