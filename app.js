@@ -57,8 +57,10 @@ function boot() {
 }
 
 // ─── PERSISTENCE ─────────────────────────────────────────────────
+function ls(k) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch { return null; } }
+function lsSave(k, v) { localStorage.setItem(k, JSON.stringify(v)); }
+function lsGet(k) { return localStorage.getItem(k); }
 function lsSet(k, v) { localStorage.setItem(k, v); }
-function loadFbCfg() { return ls('ba_fb'); }
 
 function loadLocal() {
   const h = ls('ba_home'); if (h) { S.home = h; renderHomeCoord(); }
