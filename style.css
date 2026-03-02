@@ -1,5 +1,5 @@
 /* ================================================================
-   BusAlert v3 — Professional Clean UI + Live Map
+   BusAlert v4 — Full Style Update
    ================================================================ */
 
 /* ── Variables ── */
@@ -56,7 +56,6 @@ body {
   overscroll-behavior: none;
 }
 
-/* ── Utility ── */
 .hidden {
   display: none !important;
 }
@@ -202,6 +201,38 @@ body {
   display: flex;
   align-items: center;
   gap: 7px;
+}
+
+/* Right side wrapper (status + admin btn) */
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Admin access button — subtle, won't confuse students */
+.admin-access-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border-radius: 20px;
+  border: 1.5px solid var(--border);
+  background: var(--bg);
+  color: var(--muted2);
+  font-family: var(--font);
+  font-size: .68rem;
+  font-weight: 700;
+  text-decoration: none;
+  letter-spacing: .3px;
+  transition: all .2s;
+  white-space: nowrap;
+}
+
+.admin-access-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--primary-bg);
 }
 
 .status-pip {
@@ -447,10 +478,32 @@ body {
   padding: 8px 12px;
   font-size: .8rem;
   color: var(--green);
+  flex-wrap: wrap;
 }
 
 .coord-check {
   font-size: .9rem;
+}
+
+/* ── Edit Location Button ── */
+.edit-loc-btn {
+  margin-left: auto;
+  background: none;
+  border: 1px solid #bbf7d0;
+  border-radius: 6px;
+  color: var(--green);
+  font-size: .72rem;
+  font-weight: 600;
+  font-family: var(--font);
+  padding: 3px 9px;
+  cursor: pointer;
+  transition: all .2s;
+  white-space: nowrap;
+}
+
+.edit-loc-btn:hover {
+  background: #dcfce7;
+  border-color: var(--green);
 }
 
 /* ── Slider ── */
@@ -646,74 +699,249 @@ body {
 }
 
 /* ================================================================
-   ALERT FLASH
+   SOS ALARM OVERLAY (Full-screen, requires manual stop)
    ================================================================ */
-.alert-flash {
-  border-radius: var(--radius);
-  padding: 15px 16px;
-  background: #fef2f2;
-  border: 2px solid #fca5a5;
+.sos-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 8000;
+  background: rgba(220, 38, 38, 0.95);
   display: flex;
   align-items: center;
-  gap: 14px;
-  animation: flashPulse 1s ease infinite;
-  position: relative;
+  justify-content: center;
+  flex-direction: column;
+  gap: 0;
   overflow: hidden;
 }
 
-.flash-pulse {
+.sos-overlay .sos-pulse-ring {
   position: absolute;
-  inset: 0;
-  background: rgba(239, 68, 68, .07);
-  animation: radPulse 1.5s ease-out infinite;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.4);
+  animation: sosPulse 1.8s ease-out infinite;
+  width: 200px;
+  height: 200px;
 }
 
-@keyframes radPulse {
+.sos-overlay .sos-pulse-ring.delay1 {
+  animation-delay: 0.9s;
+}
+
+@keyframes sosPulse {
+  0% {
+    transform: scale(0.3);
+    opacity: 1;
+  }
+
+  100% {
+    transform: scale(3);
+    opacity: 0;
+  }
+}
+
+.sos-content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  text-align: center;
+  padding: 0 32px;
+}
+
+.sos-icon {
+  font-size: 5rem;
+  animation: sosIconPulse 0.5s ease-in-out infinite alternate;
+}
+
+@keyframes sosIconPulse {
   from {
-    transform: scale(.5);
-    opacity: 1
+    transform: scale(1)
   }
 
   to {
-    transform: scale(2);
-    opacity: 0
+    transform: scale(1.15)
   }
+}
+
+.sos-title {
+  font-size: 2.4rem;
+  font-weight: 900;
+  color: white;
+  letter-spacing: -1px;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, .4);
+  animation: sosTitleFlash 0.6s ease-in-out infinite alternate;
+}
+
+@keyframes sosTitleFlash {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0.6;
+  }
+}
+
+.sos-sub {
+  font-size: 1rem;
+  color: rgba(255, 255, 255, .85);
+  font-weight: 500;
+  line-height: 1.5;
+  max-width: 280px;
+}
+
+.sos-stop-btn {
+  margin-top: 24px;
+  padding: 18px 36px;
+  background: white;
+  color: var(--red);
+  border: none;
+  border-radius: 50px;
+  font-family: var(--font);
+  font-size: 1.05rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, .4);
+  transition: all .2s;
+  animation: btnPop 0.8s ease-in-out infinite alternate;
+}
+
+@keyframes btnPop {
+  from {
+    transform: scale(1);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, .4);
+  }
+
+  to {
+    transform: scale(1.05);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, .5);
+  }
+}
+
+.sos-stop-btn:active {
+  transform: scale(0.97);
+}
+
+/* Track mode alert banner (inside map sheet) */
+.track-alert-banner {
+  background: linear-gradient(135deg, #fef2f2, #fee2e2);
+  border: 2px solid #f87171;
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  animation: flashPulse 0.8s ease infinite;
+}
+
+.track-alert-banner .tab-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: .88rem;
+  font-weight: 700;
+  color: var(--red);
+}
+
+.tal-stop-btn {
+  background: var(--red);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-family: var(--font);
+  font-size: .78rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all .2s;
+}
+
+.tal-stop-btn:hover {
+  background: #b91c1c;
 }
 
 @keyframes flashPulse {
 
   0%,
   100% {
-    border-color: #fca5a5;
+    border-color: #f87171;
   }
 
   50% {
-    border-color: #ef4444;
+    border-color: var(--red);
     box-shadow: 0 0 20px rgba(239, 68, 68, .25);
   }
 }
 
-.flash-icon {
-  font-size: 2rem;
-  z-index: 1;
-}
-
-.flash-body {
+/* ================================================================
+   CODE ENTRY
+   ================================================================ */
+.code-entry-wrap {
   display: flex;
-  flex-direction: column;
-  gap: 3px;
-  z-index: 1;
+  gap: 10px;
+  align-items: center;
 }
 
-.flash-body strong {
-  font-size: 1rem;
+.code-input {
+  width: 100%;
+  padding: 14px 16px;
+  background: var(--bg);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-family: monospace;
+  font-size: 1.6rem;
   font-weight: 800;
-  color: #dc2626;
+  letter-spacing: 6px;
+  text-align: center;
+  text-transform: uppercase;
+  outline: none;
+  transition: border-color .2s, box-shadow .2s;
 }
 
-.flash-body span {
+.code-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, .15);
+}
+
+.code-input::placeholder {
+  color: var(--muted);
+  letter-spacing: 2px;
+  font-size: 1rem;
+}
+
+.code-status {
   font-size: .82rem;
-  color: #6b7280;
+  text-align: center;
+  min-height: 20px;
+  color: var(--muted2);
+}
+
+.divider-or {
+  text-align: center;
+  font-size: .78rem;
+  color: var(--muted);
+  margin: 4px 0;
+  position: relative;
+}
+
+/* Code verify modal error */
+.cv-error {
+  font-size: .82rem;
+  color: var(--red);
+  font-weight: 600;
+  text-align: center;
+  padding: 6px 10px;
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  border-radius: var(--radius-sm);
+  animation: fadeUp .2s ease;
+}
+
+/* Bus info preview inside code-verify modal */
+.cv-bus-info {
+  margin-bottom: 2px;
 }
 
 /* ================================================================
@@ -927,7 +1155,7 @@ body {
   overflow: hidden;
 }
 
-#search-view {
+#code-entry-view {
   padding: 16px;
   display: flex;
   flex-direction: column;
@@ -964,7 +1192,7 @@ body {
   box-shadow: 0 -4px 30px rgba(0, 0, 0, .15);
   z-index: 10;
   padding: 12px 16px 20px;
-  max-height: 55%;
+  max-height: 60%;
   overflow-y: auto;
 }
 
@@ -1025,6 +1253,7 @@ body {
   color: var(--muted2);
 }
 
+/* Stop Tracking button */
 .stop-track-btn {
   padding: 7px 14px;
   border-radius: 8px;
@@ -1042,6 +1271,26 @@ body {
 .stop-track-btn:hover {
   border-color: var(--red);
   color: var(--red);
+}
+
+/* Miss-Stop Alert Button */
+.miss-stop-btn {
+  padding: 7px 12px;
+  border-radius: 8px;
+  border: 1.5px solid #fca5a5;
+  background: #fef2f2;
+  color: var(--red);
+  font-family: var(--font);
+  font-size: .75rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all .2s;
+}
+
+.miss-stop-btn:hover {
+  background: #fee2e2;
+  border-color: var(--red);
 }
 
 .sheet-body {
@@ -1088,41 +1337,6 @@ body {
   color: var(--muted2);
   text-align: center;
   padding: 6px;
-}
-
-/* Map alert overlay */
-.map-alert-overlay {
-  position: absolute;
-  top: 12px;
-  left: 12px;
-  right: 12px;
-  z-index: 20;
-  background: #fef2f2;
-  border: 2px solid #ef4444;
-  border-radius: var(--radius);
-  padding: 14px 16px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  text-align: center;
-  box-shadow: var(--shadow-md);
-  animation: flashPulse 1s ease infinite;
-}
-
-.map-alert-icon {
-  font-size: 2rem;
-}
-
-.map-alert-overlay strong {
-  font-size: 1rem;
-  font-weight: 800;
-  color: #dc2626;
-}
-
-.map-alert-overlay span {
-  font-size: .82rem;
-  color: #6b7280;
 }
 
 /* ── Custom Leaflet Markers ── */
@@ -1194,6 +1408,20 @@ body {
   color: var(--muted2);
 }
 
+.dlc-live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: .68rem;
+  font-weight: 800;
+  color: var(--green);
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 20px;
+  padding: 2px 8px;
+  letter-spacing: .5px;
+}
+
 .dlc-stats {
   display: flex;
   gap: 8px;
@@ -1225,6 +1453,108 @@ body {
   color: var(--muted2);
   font-family: monospace;
   text-align: center;
+}
+
+/* ── Access Code Box ── */
+.access-code-box {
+  background: linear-gradient(135deg, #1e1b4b, #312e81);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.acb-label {
+  font-size: .75rem;
+  color: rgba(255, 255, 255, .7);
+  font-weight: 600;
+}
+
+.acb-code {
+  font-size: 2.8rem;
+  font-weight: 900;
+  color: white;
+  font-family: monospace;
+  letter-spacing: 10px;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, .5);
+}
+
+.acb-hint {
+  font-size: .72rem;
+  color: rgba(255, 255, 255, .5);
+}
+
+/* ── Driver Alert Card (when student sends miss-stop) ── */
+.driver-alert-card {
+  background: linear-gradient(135deg, #fef2f2, #fee2e2);
+  border: 2px solid #f87171;
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  animation: flashPulse 1s ease infinite;
+}
+
+.dac-icon {
+  font-size: 1.6rem;
+  flex-shrink: 0;
+}
+
+.dac-body {
+  flex: 1;
+  font-size: .82rem;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.dac-body strong {
+  color: var(--red);
+  display: block;
+}
+
+.dac-loc {
+  font-size: .72rem;
+  color: var(--muted2);
+  margin-top: 2px;
+  font-weight: 400;
+}
+
+.dac-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.dac-wait-btn {
+  padding: 7px 10px;
+  border: none;
+  border-radius: 8px;
+  background: var(--orange);
+  color: white;
+  font-family: var(--font);
+  font-size: .78rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all .2s;
+}
+
+.dac-wait-btn:hover {
+  background: #b45309;
+}
+
+.dac-dismiss-btn {
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: none;
+  color: var(--muted2);
+  font-family: var(--font);
+  font-size: .78rem;
+  cursor: pointer;
 }
 
 /* ================================================================
@@ -1339,6 +1669,7 @@ body {
   box-shadow: 0 8px 28px rgba(0, 0, 0, .25);
   transition: transform .4s cubic-bezier(.34, 1.56, .64, 1);
   white-space: nowrap;
+  max-width: 90vw;
 }
 
 .toast.show {
@@ -1358,11 +1689,11 @@ body {
   border: 1px solid var(--border);
   border-radius: 20px;
   padding: 6px 12px;
-  font-size: 0.82rem;
+  font-size: .82rem;
   font-weight: 600;
   color: var(--primary);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all .2s;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -1370,12 +1701,12 @@ body {
 
 .saved-pill:hover {
   background: var(--bg);
-  border: 1px solid var(--primary);
+  border-color: var(--primary);
 }
 
 .saved-pill .del-saved {
   color: #f87171;
-  font-size: 0.75rem;
+  font-size: .75rem;
   padding: 2px 4px;
   border-radius: 4px;
   cursor: pointer;
@@ -1476,7 +1807,7 @@ body {
 }
 
 /* ── Responsive ── */
-@media(max-width:480px) {
+@media (max-width: 480px) {
   .app {
     max-width: 100%;
   }

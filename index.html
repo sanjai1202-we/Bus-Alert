@@ -50,16 +50,19 @@
                 <span class="brand-icon">🚌</span>
                 <span class="brand-name">BusAlert</span>
             </div>
-            <div class="topbar-status">
-                <span class="status-pip" id="status-pip"></span>
-                <span class="status-label" id="status-label">Idle</span>
+            <div class="topbar-right">
+                <div class="topbar-status">
+                    <span class="status-pip" id="status-pip"></span>
+                    <span class="status-label" id="status-label">Idle</span>
+                </div>
+                <a href="admin.html" class="admin-access-btn" title="Admin Portal">🔐 Admin</a>
             </div>
         </header>
 
         <!-- TABS -->
         <nav class="tabs">
             <button class="tab active" id="tab-sleep" onclick="switchTab('sleep')">
-                <span class="tab-ico">😴</span><span class="tab-txt">Sleep Mode</span>
+                <span class="tab-ico">😴</span><span class="tab-txt">Sleep</span>
             </button>
             <button class="tab" id="tab-find" onclick="switchTab('find')">
                 <span class="tab-ico">🗺️</span><span class="tab-txt">Track Bus</span>
@@ -75,7 +78,7 @@
                 <div class="hero-emoji">😴</div>
                 <div class="hero-text">
                     <h2>Sleep Mode</h2>
-                    <p>We'll vibrate when you're near home.</p>
+                    <p>We'll alert you with SOS alarm when near home.</p>
                 </div>
             </div>
 
@@ -85,7 +88,11 @@
                     <span class="pill-ico">📍</span> Set My Home Location
                 </button>
                 <div class="coord-tag hidden" id="home-coord-tag">
-                    <span class="coord-check">✅</span><span id="home-coord-text"></span>
+                    <span class="coord-check">✅</span>
+                    <span id="home-coord-text"></span>
+                    <!-- Edit button -->
+                    <button class="edit-loc-btn" id="btn-edit-home" onclick="editHomeLocation()"
+                        title="Change location">✏️ Edit</button>
                 </div>
             </div>
 
@@ -134,13 +141,17 @@
                 <span id="sleep-btn-label">😴 &nbsp;Start Sleep Mode</span>
             </button>
 
-            <!-- Alert flash -->
-            <div class="alert-flash hidden" id="sleep-alert">
-                <div class="flash-pulse"></div>
-                <span class="flash-icon">🔔</span>
-                <div class="flash-body">
-                    <strong>WAKE UP!</strong>
-                    <span>You're near your stop — get off now!</span>
+            <!-- SOS Alert overlay — requires manual stop -->
+            <div class="sos-overlay hidden" id="sleep-sos">
+                <div class="sos-pulse-ring"></div>
+                <div class="sos-pulse-ring delay1"></div>
+                <div class="sos-content">
+                    <div class="sos-icon">🔔</div>
+                    <div class="sos-title">WAKE UP!</div>
+                    <div class="sos-sub">You're near your stop — GET OFF NOW!</div>
+                    <button class="sos-stop-btn" onclick="stopSosAlarm('sleep')">
+                        ✋ I'm Awake — Stop Alarm
+                    </button>
                 </div>
             </div>
         </section>
@@ -148,13 +159,13 @@
         <!-- ─────────────── TRACK BUS ─────────────── -->
         <section id="panel-find" class="panel hidden">
 
-            <!-- Search state — shown when not tracking -->
-            <div id="search-view">
+            <!-- Search View -->
+            <div id="code-entry-view">
                 <div class="section-hero track-hero">
                     <div class="hero-emoji">🗺️</div>
                     <div class="hero-text">
                         <h2>Find My Bus</h2>
-                        <p>Search by your stop or route name.</p>
+                        <p>Search by your stop name to see live buses.</p>
                     </div>
                 </div>
 
@@ -195,7 +206,13 @@
                             <div class="bus-info-num" id="map-bus-num">Bus --</div>
                             <div class="bus-info-route" id="map-bus-route">--</div>
                         </div>
-                        <button class="stop-track-btn" onclick="stopTracking()">✕ Stop</button>
+                        <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+                            <button class="stop-track-btn" onclick="stopTracking()">✕ Stop</button>
+                            <!-- Miss-Stop Alert button -->
+                            <button class="miss-stop-btn" id="btn-miss-stop" onclick="openMissStopModal()">
+                                🆘 Driver Missed Me!
+                            </button>
+                        </div>
                     </div>
 
                     <!-- Distance + stop setup -->
@@ -217,6 +234,8 @@
                             </button>
                             <div class="coord-tag hidden" id="stop-coord-tag">
                                 <span class="coord-check">✅</span><span id="stop-coord-text"></span>
+                                <button class="edit-loc-btn" onclick="editStopLocation()" title="Change stop">✏️
+                                    Edit</button>
                             </div>
                         </div>
 
@@ -239,26 +258,29 @@
                         </div>
 
                         <div class="map-hint" id="map-status-hint">📡 Waiting for bus GPS signal...</div>
+
+                        <!-- Alert active banner with manual stop -->
+                        <div class="track-alert-banner hidden" id="track-alert-banner">
+                            <div class="tab-inner">
+                                <span>🔔 BUS NEAR YOUR STOP!</span>
+                                <button class="tal-stop-btn" onclick="stopSosAlarm('track')">✋ Stop Alarm</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Alert overlay on map -->
-                <div class="map-alert-overlay hidden" id="map-alert">
-                    <div class="map-alert-inner">
-                        <div class="map-alert-icon">🚌</div>
-                        <strong>Bus is Near Your Stop!</strong>
-                        <span>Get ready — bus approaching!</span>
+                <!-- SOS Alert overlay (track mode) -->
+                <div class="sos-overlay hidden" id="track-sos">
+                    <div class="sos-pulse-ring"></div>
+                    <div class="sos-pulse-ring delay1"></div>
+                    <div class="sos-content">
+                        <div class="sos-icon">🚌</div>
+                        <div class="sos-title">BUS IS NEAR!</div>
+                        <div class="sos-sub">Get ready at your stop — bus approaching!</div>
+                        <button class="sos-stop-btn" onclick="stopSosAlarm('track')">
+                            ✋ I'm Ready — Stop Alarm
+                        </button>
                     </div>
-                </div>
-            </div>
-
-            <!-- Alert flash (fallback) -->
-            <div class="alert-flash hidden" id="track-alert">
-                <div class="flash-pulse"></div>
-                <span class="flash-icon">🚌</span>
-                <div class="flash-body">
-                    <strong>BUS IS NEAR!</strong>
-                    <span>Get ready at your stop!</span>
                 </div>
             </div>
         </section>
@@ -269,7 +291,7 @@
                 <div class="hero-emoji">🚍</div>
                 <div class="hero-text">
                     <h2>Driver Mode</h2>
-                    <p>Share your live GPS — students find you automatically.</p>
+                    <p>Share your live GPS — students track you automatically.</p>
                 </div>
             </div>
 
@@ -279,7 +301,6 @@
                 <div id="saved-buses-section" class="block hidden" style="margin-bottom: 20px;">
                     <div class="block-label">Your Saved Profiles</div>
                     <div id="saved-buses-list" class="saved-list">
-                        <!-- Saved pills go here -->
                     </div>
                 </div>
 
@@ -317,7 +338,7 @@
                 <div class="dlc-stats">
                     <div class="dlc-stat">
                         <div class="dlc-stat-val" id="dlc-updates">0</div>
-                        <div class="dlc-stat-lbl">GPS Packets Sent</div>
+                        <div class="dlc-stat-lbl">GPS Packets</div>
                     </div>
                     <div class="dlc-stat">
                         <div class="dlc-stat-val" id="dlc-accuracy">--</div>
@@ -329,6 +350,27 @@
                     </div>
                 </div>
                 <div class="dlc-coords" id="dlc-coords">Fetching GPS...</div>
+
+                <!-- Access Code Display -->
+                <div class="access-code-box">
+                    <div class="acb-label">� Share this code with students:</div>
+                    <div class="acb-code" id="dlc-access-code">----</div>
+                    <div class="acb-hint">Students enter this code to track your bus</div>
+                </div>
+
+                <!-- Missed-Stop Alert Notification (for driver) -->
+                <div class="driver-alert-card hidden" id="driver-alert-card">
+                    <div class="dac-icon">🆘</div>
+                    <div class="dac-body">
+                        <strong id="dac-name">Student</strong> missed the stop!
+                        <div class="dac-loc" id="dac-loc">--</div>
+                    </div>
+                    <div class="dac-actions">
+                        <button class="dac-wait-btn" id="dac-wait-btn" onclick="driverPressedWait()">⏳ I'll
+                            Wait</button>
+                        <button class="dac-dismiss-btn" onclick="driverDismissAlert()">✕</button>
+                    </div>
+                </div>
             </div>
 
             <!-- Go Live button -->
@@ -339,37 +381,46 @@
 
     </div>
 
-    <!-- Firebase setup modal -->
-    <div id="fb-modal" class="modal-bg hidden">
+    <!-- Code Verify Modal (shown when tapping Track from search results) -->
+    <div id="code-verify-modal" class="modal-bg hidden">
         <div class="modal-box">
-            <div class="modal-title">🔥 Connect Firebase</div>
-            <p class="modal-desc">One-time setup to enable live bus sharing. All tracking data goes through your own
-                Firebase project.</p>
-            <div class="steps">
-                <div class="step"><span class="sn">1</span><span>Go to <a href="https://console.firebase.google.com"
-                            target="_blank">console.firebase.google.com</a> → Create Project</span></div>
-                <div class="step"><span class="sn">2</span><span>Add Web App → copy the config below</span></div>
-                <div class="step"><span class="sn">3</span><span>Build → Realtime Database → Create → <b>Test
-                            Mode</b></span></div>
-            </div>
+            <div class="modal-title">🔑 Enter Bus Code</div>
+            <p class="modal-desc">
+                Enter the <strong>4-digit code</strong> your driver shared.<br>
+                Only students with the correct code can track this bus.
+            </p>
+            <div class="cv-bus-info" id="cv-bus-info"></div>
             <div class="block">
-                <div class="block-label">API Key</div><input class="field" id="cfg-key" placeholder="AIzaSy..." />
+                <div class="block-label">Access Code</div>
+                <input class="code-input" id="cv-code-input" placeholder="e.g. KR7M" maxlength="6"
+                    oninput="this.value=this.value.toUpperCase()" onkeydown="if(event.key==='Enter')verifyAndTrack()" />
             </div>
-            <div class="block">
-                <div class="block-label">Auth Domain</div><input class="field" id="cfg-domain"
-                    placeholder="project.firebaseapp.com" />
+            <div class="cv-error hidden" id="cv-error">❌ Wrong code. Ask your driver for today's code.</div>
+            <div class="modal-actions">
+                <button class="pill-btn" onclick="closeCodeVerifyModal()">Cancel</button>
+                <button class="main-btn" onclick="verifyAndTrack()"
+                    style="flex:1;padding:13px;background:var(--track-accent);color:white">
+                    🔓 Verify &amp; Track
+                </button>
             </div>
+        </div>
+    </div>
+
+    <!-- Miss-Stop Modal -->
+    <div id="miss-stop-modal" class="modal-bg hidden">
+        <div class="modal-box">
+            <div class="modal-title">🆘 Alert Driver</div>
+            <p class="modal-desc">Driver missed your stop? Send your name & location to the driver.</p>
             <div class="block">
-                <div class="block-label">Database URL</div><input class="field" id="cfg-db"
-                    placeholder="https://project-default-rtdb.firebaseio.com" />
+                <div class="block-label">Your Name</div>
+                <input class="field" id="miss-stop-name" placeholder="Enter your name" />
             </div>
-            <div class="block">
-                <div class="block-label">Project ID</div><input class="field" id="cfg-proj"
-                    placeholder="your-project-id" />
+            <div id="miss-stop-status" style="font-size:.82rem;color:var(--green);min-height:20px;text-align:center">
             </div>
             <div class="modal-actions">
-                <button class="pill-btn" onclick="closeModal()">Cancel</button>
-                <button class="main-btn" onclick="saveFirebase()" style="flex:1;padding:12px">Save & Connect</button>
+                <button class="pill-btn" onclick="closeMissStopModal()">Cancel</button>
+                <button class="main-btn" onclick="sendMissStopAlert()"
+                    style="flex:1;padding:12px;background:var(--red);color:white">📤 Send Alert</button>
             </div>
         </div>
     </div>

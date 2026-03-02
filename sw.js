@@ -3,10 +3,11 @@
    Enables: App install + Offline support
    ============================================= */
 
-const CACHE = 'busAlert-v3';
+const CACHE = 'busAlert-v4';
 const FILES = [
     '/',
     '/index.html',
+    '/admin.html',
     '/style.css',
     '/app.js',
     '/manifest.json',

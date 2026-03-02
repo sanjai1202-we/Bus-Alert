@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <title>BusAlert Admin — Fleet Monitor</title>
+    <meta name="robots" content="noindex" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --surface: #1e293b;
+            --border: #334155;
+            --primary: #6366f1;
+            --green: #22c55e;
+            --red: #ef4444;
+            --orange: #f59e0b;
+            --text: #f1f5f9;
+            --sub: #94a3b8;
+            --muted: #475569;
+            --font: 'Inter', system-ui, sans-serif;
+        }
+
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html,
+        body {
+            height: 100%;
+            font-family: var(--font);
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        /* ── Login Screen ── */
+        #login-screen {
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(160deg, #0f172a, #1e1b4b);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .login-box {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 36px 28px;
+            width: 100%;
+            max-width: 360px;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, .5);
+            animation: fadeUp .5s ease;
+        }
+
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px)
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0)
+            }
+        }
+
+        .login-logo {
+            font-size: 3rem;
+            text-align: center;
+            margin-bottom: 6px;
+        }
+
+        .login-title {
+            font-size: 1.4rem;
+            font-weight: 800;
+            text-align: center;
+            margin-bottom: 4px;
+        }
+
+        .login-sub {
+            font-size: .8rem;
+            color: var(--sub);
+            text-align: center;
+            margin-bottom: 28px;
+        }
+
+        .login-field-wrap {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+
+        .login-field {
+            width: 100%;
+            padding: 12px 14px;
+            background: var(--bg);
+            border: 1.5px solid var(--border);
+            border-radius: 10px;
+            color: var(--text);
+            font-family: var(--font);
+            font-size: .93rem;
+            outline: none;
+            transition: border-color .2s;
+        }
+
+        .login-field:focus {
+            border-color: var(--primary);
+        }
+
+        .login-field::placeholder {
+            color: var(--muted);
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            background: var(--primary);
+            color: white;
+            font-family: var(--font);
+            font-size: .97rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all .2s;
+        }
+
+        .login-btn:hover {
+            background: #4f46e5;
+            transform: translateY(-1px);
+        }
+
+        .login-err {
+            color: var(--red);
+            font-size: .8rem;
+            text-align: center;
+            min-height: 18px;
+        }
+
+        /* ── Admin Shell ── */
+        #admin-shell {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        .admin-header {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 14px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+            z-index: 100;
+        }
+
+        .admin-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .admin-brand-icon {
+            font-size: 1.5rem;
+        }
+
+        .admin-brand-name {
+            font-size: 1.1rem;
+            font-weight: 800;
+            color: var(--primary);
+        }
+
+        .admin-brand-badge {
+            background: #7c3aed;
+            color: white;
+            font-size: .65rem;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 20px;
+            letter-spacing: .5px;
+        }
+
+        .admin-actions {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .admin-stat-badge {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 6px 12px;
+            font-size: .78rem;
+        }
+
+        .admin-stat-badge span {
+            color: var(--green);
+            font-weight: 700;
+        }
+
+        .logout-btn {
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: 1.5px solid var(--border);
+            background: none;
+            color: var(--sub);
+            font-family: var(--font);
+            font-size: .8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all .2s;
+        }
+
+        .logout-btn:hover {
+            border-color: var(--red);
+            color: var(--red);
+        }
+
+        /* ── Body Layout ── */
+        .admin-body {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 300px;
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .sidebar-header {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border);
+            font-size: .8rem;
+            font-weight: 700;
+            color: var(--sub);
+            text-transform: uppercase;
+            letter-spacing: .6px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .refresh-btn {
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--sub);
+            border-radius: 6px;
+            padding: 4px 10px;
+            font-size: .72rem;
+            cursor: pointer;
+            font-family: var(--font);
+            transition: all .2s;
+        }
+
+        .refresh-btn:hover {
+            color: var(--primary);
+            border-color: var(--primary);
+        }
+
+        #bus-sidebar-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .bus-row {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px 14px;
+            cursor: pointer;
+            transition: all .2s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .bus-row::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: var(--green);
+            border-radius: 3px 0 0 3px;
+        }
+
+        .bus-row.stale::before {
+            background: var(--orange);
+        }
+
+        .bus-row.offline::before {
+            background: var(--muted);
+        }
+
+        .bus-row:hover {
+            border-color: var(--primary);
+        }
+
+        .bus-row.selected {
+            border-color: var(--primary);
+            background: rgba(99, 102, 241, .1);
+        }
+
+        .br-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+
+        .br-num {
+            font-size: .92rem;
+            font-weight: 800;
+        }
+
+        .br-status {
+            font-size: .68rem;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 20px;
+        }
+
+        .br-status.live {
+            background: rgba(34, 197, 94, .15);
+            color: var(--green);
+        }
+
+        .br-status.stale {
+            background: rgba(245, 158, 11, .15);
+            color: var(--orange);
+        }
+
+        .br-status.offline {
+            background: rgba(71, 85, 105, .15);
+            color: var(--muted);
+        }
+
+        .br-route {
+            font-size: .75rem;
+            color: var(--sub);
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .br-meta {
+            display: flex;
+            gap: 10px;
+            font-size: .7rem;
+            color: var(--muted);
+        }
+
+        .br-code {
+            font-size: .7rem;
+            color: var(--primary);
+            font-weight: 700;
+            font-family: monospace;
+            margin-top: 4px;
+        }
+
+        .no-buses-hint {
+            text-align: center;
+            padding: 40px 16px;
+            color: var(--muted);
+            font-size: .85rem;
+        }
+
+        /* ── Map ── */
+        #admin-map {
+            flex: 1;
+        }
+
+        /* ── Info Panel ── */
+        .info-panel {
+            position: absolute;
+            top: 80px;
+            right: 16px;
+            z-index: 500;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 16px;
+            width: 240px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, .4);
+            display: none;
+        }
+
+        .info-panel.show {
+            display: block;
+        }
+
+        .ip-close {
+            float: right;
+            background: none;
+            border: none;
+            color: var(--sub);
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        .ip-busnum {
+            font-size: 1.1rem;
+            font-weight: 800;
+            margin-bottom: 4px;
+        }
+
+        .ip-route {
+            font-size: .8rem;
+            color: var(--sub);
+            margin-bottom: 12px;
+        }
+
+        .ip-stats {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+        }
+
+        .ip-stat-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: .8rem;
+        }
+
+        .ip-stat-label {
+            color: var(--sub);
+        }
+
+        .ip-stat-val {
+            font-weight: 600;
+        }
+
+        .ip-code-box {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px 12px;
+            margin-top: 10px;
+            text-align: center;
+        }
+
+        .ip-code-label {
+            font-size: .68rem;
+            color: var(--sub);
+            text-transform: uppercase;
+            letter-spacing: .5px;
+        }
+
+        .ip-code-val {
+            font-size: 1.6rem;
+            font-weight: 800;
+            font-family: monospace;
+            color: var(--primary);
+            letter-spacing: 3px;
+        }
+
+        .ip-focus-btn {
+            margin-top: 10px;
+            width: 100%;
+            padding: 9px;
+            border: none;
+            border-radius: 8px;
+            background: var(--primary);
+            color: white;
+            font-family: var(--font);
+            font-size: .82rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        /* ── Scrollbar ── */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+
+        /* Alert rows */
+        .alert-row-card {
+            background: rgba(239, 68, 68, .1);
+            border: 1px solid rgba(239, 68, 68, .3);
+            border-radius: 10px;
+            padding: 10px 12px;
+            margin-bottom: 8px;
+        }
+
+        .alert-row-top {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
+
+        .alert-row-name {
+            font-size: .85rem;
+            font-weight: 700;
+            color: var(--red);
+        }
+
+        .alert-row-time {
+            font-size: .72rem;
+            color: var(--muted);
+        }
+
+        .alert-row-loc {
+            font-size: .75rem;
+            color: var(--sub);
+        }
+
+        .alert-section {
+            border-top: 1px solid var(--border);
+            margin-top: 10px;
+            padding: 10px 16px 10px;
+            flex-shrink: 0;
+        }
+
+        .alert-section-title {
+            font-size: .72rem;
+            font-weight: 700;
+            color: var(--red);
+            text-transform: uppercase;
+            letter-spacing: .5px;
+            margin-bottom: 8px;
+        }
+
+        #alert-list {
+            max-height: 160px;
+            overflow-y: auto;
+        }
+
+        .no-alert {
+            font-size: .78rem;
+            color: var(--muted);
+            text-align: center;
+            padding: 12px 0;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- LOGIN -->
+    <div id="login-screen">
+        <div class="login-box">
+            <div class="login-logo">🔐</div>
+            <div class="login-title">Admin Access</div>
+            <div class="login-sub">BusAlert Fleet Monitor — Authorized personnel only</div>
+            <div class="login-field-wrap">
+                <input class="login-field" type="text" id="adm-user" placeholder="Username" autocomplete="off" />
+                <input class="login-field" type="password" id="adm-pass" placeholder="Password" autocomplete="off"
+                    onkeydown="if(event.key==='Enter')doLogin()" />
+            </div>
+            <button class="login-btn" onclick="doLogin()">🔑 Sign In</button>
+            <div class="login-err" id="login-err"></div>
+        </div>
+    </div>
+
+    <!-- ADMIN SHELL -->
+    <div id="admin-shell" style="display:none">
+
+        <header class="admin-header">
+            <div class="admin-brand">
+                <span class="admin-brand-icon">🚌</span>
+                <span class="admin-brand-name">BusAlert</span>
+                <span class="admin-brand-badge">ADMIN</span>
+            </div>
+            <div class="admin-actions">
+                <div class="admin-stat-badge">Live Buses: <span id="live-count">0</span></div>
+                <div class="admin-stat-badge">Total: <span id="total-count" style="color:var(--sub)">0</span></div>
+                <button class="logout-btn" onclick="doLogout()">⬅ Logout</button>
+            </div>
+        </header>
+
+        <div class="admin-body" style="position:relative">
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <div class="sidebar-header">
+                    All Buses
+                    <button class="refresh-btn" onclick="refreshBuses()">↻ Refresh</button>
+                </div>
+                <div id="bus-sidebar-list">
+                    <div class="no-buses-hint">🔄 Connecting to Firebase...</div>
+                </div>
+                <!-- Student Alerts Section -->
+                <div class="alert-section">
+                    <div class="alert-section-title">⚠️ Student Missed-Stop Alerts</div>
+                    <div id="alert-list">
+                        <div class="no-alert">No active alerts</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Map -->
+            <div id="admin-map"></div>
+
+            <!-- Info Panel -->
+            <div class="info-panel" id="info-panel">
+                <button class="ip-close" onclick="closeInfoPanel()">✕</button>
+                <div class="ip-busnum" id="ip-busnum">Bus --</div>
+                <div class="ip-route" id="ip-route">--</div>
+                <div class="ip-stats">
+                    <div class="ip-stat-row"><span class="ip-stat-label">Status</span><span class="ip-stat-val"
+                            id="ip-status">--</span></div>
+                    <div class="ip-stat-row"><span class="ip-stat-label">Last Update</span><span class="ip-stat-val"
+                            id="ip-updated">--</span></div>
+                    <div class="ip-stat-row"><span class="ip-stat-label">Accuracy</span><span class="ip-stat-val"
+                            id="ip-accuracy">--</span></div>
+                    <div class="ip-stat-row"><span class="ip-stat-label">Coords</span><span class="ip-stat-val"
+                            id="ip-coords" style="font-size:.72rem;font-family:monospace">--</span></div>
+                </div>
+                <div class="ip-code-box">
+                    <div class="ip-code-label">Student Access Code</div>
+                    <div class="ip-code-val" id="ip-code">----</div>
+                </div>
+                <button class="ip-focus-btn" onclick="focusSelected()">📍 Focus on Map</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        'use strict';
+
+        // ── CREDENTIALS (change these!) ──
+        const ADMIN_CREDENTIALS = [
+            { user: 'admin', pass: 'admin@159' },
+            { user: 'principal', pass: 'college@123' }
+        ];
+
+        const FIREBASE_CFG = {
+            apiKey: "AIzaSyDPlNBmoYHUN8Ao-6j08Ez8HC0wnGWw2q8",
+            authDomain: "bus-alert-3941d.firebaseapp.com",
+            databaseURL: "https://bus-alert-3941d-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "bus-alert-3941d"
+        };
+
+        let db = null, map = null, markers = {}, allBuses = {}, selectedId = null, alertMarkers = {};
+
+        function doLogin() {
+            const user = document.getElementById('adm-user').value.trim();
+            const pass = document.getElementById('adm-pass').value;
+            const err = document.getElementById('login-err');
+            const ok = ADMIN_CREDENTIALS.some(c => c.user === user && c.pass === pass);
+            if (!ok) { err.textContent = '❌ Invalid credentials. Try again.'; return; }
+            err.textContent = '';
+            sessionStorage.setItem('ba_admin', '1');
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('admin-shell').style.display = 'flex';
+            initAdmin();
+        }
+
+        function doLogout() {
+            sessionStorage.removeItem('ba_admin');
+            location.reload();
+        }
+
+        // Check if already logged in
+        window.addEventListener('DOMContentLoaded', () => {
+            if (sessionStorage.getItem('ba_admin') === '1') {
+                document.getElementById('login-screen').style.display = 'none';
+                document.getElementById('admin-shell').style.display = 'flex';
+                initAdmin();
+            }
+        });
+
+        function initAdmin() {
+            initMap();
+            loadFirebase(() => {
+                if (!window.firebase.apps?.length) window.firebase.initializeApp(FIREBASE_CFG);
+                db = window.firebase.database();
+                listenBuses();
+                listenAlerts();
+            });
+        }
+
+        function loadFirebase(cb) {
+            if (window.firebase) { cb(); return; }
+            const srcs = [
+                'https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js',
+                'https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js',
+            ];
+            let n = 0;
+            srcs.forEach(src => {
+                const t = document.createElement('script');
+                t.src = src;
+                t.onload = () => { if (++n === srcs.length) cb(); };
+                document.head.appendChild(t);
+            });
+        }
+
+        function initMap() {
+            map = L.map('admin-map', { zoomControl: true, attributionControl: false }).setView([12.9716, 77.5946], 11);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+        }
+
+        function listenBuses() {
+            db.ref('buses').on('value', snap => {
+                allBuses = snap.val() || {};
+                renderSidebar();
+                updateMapMarkers();
+                updateCounts();
+            });
+        }
+
+        function listenAlerts() {
+            db.ref('student_alerts').on('value', snap => {
+                const alerts = snap.val() || {};
+                renderAlerts(alerts);
+            });
+        }
+
+        function renderSidebar() {
+            const list = document.getElementById('bus-sidebar-list');
+            const entries = Object.entries(allBuses);
+            if (!entries.length) {
+                list.innerHTML = '<div class="no-buses-hint">No buses registered yet.<br>Drivers need to go live first.</div>';
+                return;
+            }
+            entries.sort((a, b) => {
+                const aTs = a[1].location?.timestamp || 0;
+                const bTs = b[1].location?.timestamp || 0;
+                return bTs - aTs;
+            });
+            list.innerHTML = entries.map(([id, b]) => {
+                const age = b.location?.timestamp ? (Date.now() - b.location.timestamp) : Infinity;
+                const isLive = b.active && age < 5 * 60 * 1000;
+                const isStale = b.active && age >= 5 * 60 * 1000 && age < 30 * 60 * 1000;
+                const cls = isLive ? 'live' : isStale ? 'stale' : 'offline';
+                const statusTxt = isLive ? 'LIVE' : isStale ? 'STALE' : 'OFFLINE';
+                const rowCls = isLive ? '' : isStale ? ' stale' : ' offline';
+                const code = b.accessCode || '----';
+                return `<div class="bus-row${rowCls}${selectedId === id ? ' selected' : ''}" onclick="selectBus('${id}')">
+      <div class="br-top">
+        <span class="br-num">🚌 ${esc(b.busNumber || '--')}</span>
+        <span class="br-status ${cls}">${statusTxt}</span>
+      </div>
+      <div class="br-route">${esc(b.route || '--')}</div>
+      <div class="br-meta">
+        <span>⏱ ${timeAgo(b.location?.timestamp)}</span>
+        ${b.location ? `<span>±${Math.round(b.location.accuracy || 0)}m</span>` : ''}
+      </div>
+      <div class="br-code">CODE: ${code}</div>
+    </div>`;
+            }).join('');
+        }
+
+        function selectBus(id) {
+            selectedId = id;
+            renderSidebar();
+            showInfoPanel(id);
+            if (markers[id]) map.setView(markers[id].getLatLng(), 15, { animate: true });
+        }
+
+        function showInfoPanel(id) {
+            const b = allBuses[id];
+            if (!b) return;
+            const age = b.location?.timestamp ? (Date.now() - b.location.timestamp) : Infinity;
+            const isLive = b.active && age < 5 * 60 * 1000;
+            document.getElementById('ip-busnum').textContent = 'Bus ' + (b.busNumber || '--');
+            document.getElementById('ip-route').textContent = b.route || '--';
+            document.getElementById('ip-status').textContent = isLive ? '🟢 Live' : '🔴 Offline';
+            document.getElementById('ip-updated').textContent = timeAgo(b.location?.timestamp);
+            document.getElementById('ip-accuracy').textContent = b.location ? `±${Math.round(b.location.accuracy || 0)}m` : '--';
+            document.getElementById('ip-coords').textContent = b.location ? `${b.location.lat.toFixed(4)}, ${b.location.lon.toFixed(4)}` : '--';
+            document.getElementById('ip-code').textContent = b.accessCode || '----';
+            document.getElementById('info-panel').classList.add('show');
+        }
+
+        function closeInfoPanel() { document.getElementById('info-panel').classList.remove('show'); selectedId = null; renderSidebar(); }
+
+        function focusSelected() {
+            if (selectedId && markers[selectedId]) {
+                map.setView(markers[selectedId].getLatLng(), 16, { animate: true });
+            }
+        }
+
+        function updateMapMarkers() {
+            Object.entries(allBuses).forEach(([id, b]) => {
+                if (!b.location) return;
+                const { lat, lon } = b.location;
+                const age = (Date.now() - (b.location.timestamp || 0));
+                const isLive = b.active && age < 5 * 60 * 1000;
+                const color = isLive ? '#22c55e' : '#f59e0b';
+                const icon = L.divIcon({
+                    className: '',
+                    html: `<div style="background:${color};border:3px solid white;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;box-shadow:0 4px 14px rgba(0,0,0,.4)">${isLive ? '🚌' : '🚍'}</div>`,
+                    iconSize: [36, 36], iconAnchor: [18, 18]
+                });
+                if (!markers[id]) {
+                    markers[id] = L.marker([lat, lon], { icon }).addTo(map);
+                    markers[id].bindPopup(`<b>Bus ${b.busNumber}</b><br>${b.route || ''}<br><small>Code: ${b.accessCode || '--'}</small>`);
+                    markers[id].on('click', () => selectBus(id));
+                } else {
+                    markers[id].setLatLng([lat, lon]);
+                    markers[id].setIcon(icon);
+                }
+            });
+        }
+
+        function renderAlerts(alerts) {
+            const list = document.getElementById('alert-list');
+            const entries = Object.entries(alerts).filter(([, a]) => a.active);
+            if (!entries.length) { list.innerHTML = '<div class="no-alert">No active alerts</div>'; return; }
+            list.innerHTML = entries.map(([id, a]) => `
+    <div class="alert-row-card">
+      <div class="alert-row-top">
+        <span class="alert-row-name">🆘 ${esc(a.studentName || 'Unknown')}</span>
+        <span class="alert-row-time">${timeAgo(a.timestamp)}</span>
+      </div>
+      <div class="alert-row-loc">📍 ${a.lat?.toFixed(4) || '?'}, ${a.lon?.toFixed(4) || '?'} — Bus ${esc(a.busNum || '?')}</div>
+    </div>
+  `).join('');
+            // Plot alert markers on map
+            entries.forEach(([id, a]) => {
+                if (!a.lat || !a.lon) return;
+                if (!alertMarkers[id]) {
+                    alertMarkers[id] = L.marker([a.lat, a.lon], {
+                        icon: L.divIcon({
+                            className: '',
+                            html: '<div style="background:#ef4444;border:3px solid white;border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:.9rem;box-shadow:0 4px 14px rgba(239,68,68,.5)">🆘</div>',
+                            iconSize: [30, 30], iconAnchor: [15, 15]
+                        })
+                    }).addTo(map);
+                    alertMarkers[id].bindPopup(`<b>🆘 Missed Stop Alert</b><br>${a.studentName || '?'}<br>Bus: ${a.busNum || '?'}`);
+                }
+            });
+        }
+
+        function updateCounts() {
+            const total = Object.keys(allBuses).length;
+            const live = Object.values(allBuses).filter(b => b.active && b.location && (Date.now() - b.location.timestamp) < 5 * 60 * 1000).length;
+            document.getElementById('live-count').textContent = live;
+            document.getElementById('total-count').textContent = total;
+        }
+
+        function refreshBuses() { if (db) db.ref('buses').once('value', snap => { allBuses = snap.val() || {}; renderSidebar(); updateMapMarkers(); updateCounts(); }); }
+
+        function timeAgo(ts) {
+            if (!ts) return 'never';
+            const s = Math.floor((Date.now() - ts) / 1000);
+            if (s < 10) return 'just now';
+            if (s < 60) return s + 's ago';
+            if (s < 3600) return Math.floor(s / 60) + 'm ago';
+            return Math.floor(s / 3600) + 'h ago';
+        }
+        function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+    </script>
+</body>
+
+</html>
