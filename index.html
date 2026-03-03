@@ -207,7 +207,13 @@
                             <div class="bus-info-route" id="map-bus-route">--</div>
                         </div>
                         <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
-                            <button class="stop-track-btn" onclick="stopTracking()">✕ Stop</button>
+                            <div style="display:flex;gap:6px;align-items:center">
+                                <button class="refresh-map-btn" id="btn-refresh-map" onclick="refreshTracking()"
+                                    title="Refresh bus location">
+                                    🔄
+                                </button>
+                                <button class="stop-track-btn" onclick="stopTracking()">✕ Stop</button>
+                            </div>
                             <!-- Miss-Stop Alert button -->
                             <button class="miss-stop-btn" id="btn-miss-stop" onclick="openMissStopModal()">
                                 🆘 Driver Missed Me!
@@ -291,38 +297,38 @@
                 <div class="hero-emoji">🚍</div>
                 <div class="hero-text">
                     <h2>Driver Mode</h2>
-                    <p>Share your live GPS — students track you automatically.</p>
+                    <p>Enter your bus code from admin to go live.</p>
                 </div>
             </div>
 
-            <!-- Bus info form (hidden when live) -->
-            <div id="driver-form">
-                <!-- Saved Profiles -->
-                <div id="saved-buses-section" class="block hidden" style="margin-bottom: 20px;">
-                    <div class="block-label">Your Saved Profiles</div>
-                    <div id="saved-buses-list" class="saved-list">
+            <!-- Driver Login (code entry) — shown before going live -->
+            <div id="driver-login-view">
+                <div class="block">
+                    <div class="block-label">Enter Bus Code</div>
+                    <p style="font-size:.78rem;color:var(--muted2);margin-bottom:8px">
+                        Enter the code shared by your admin to access your bus details.
+                    </p>
+                    <input class="code-input" id="driver-code-input" placeholder="e.g. KR7M" maxlength="6"
+                        oninput="this.value=this.value.toUpperCase()"
+                        onkeydown="if(event.key==='Enter')driverLoginByCode()" />
+                    <button class="main-btn" style="margin-top:8px;padding:12px;font-size:.88rem"
+                        onclick="driverLoginByCode()">🔍 Verify Code</button>
+                    <div id="driver-code-status"
+                        style="font-size:.8rem;text-align:center;min-height:20px;margin-top:6px"></div>
+                </div>
+
+                <!-- Pre-filled bus info card (shown after code verified) -->
+                <div id="driver-bus-preview" class="hidden" style="margin-top:4px">
+                    <div class="block" style="border-color:#86efac;background:#f0fdf4">
+                        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+                            <span style="font-size:1.4rem">🚌</span>
+                            <div>
+                                <div style="font-weight:800;font-size:1rem" id="dp-busnum">--</div>
+                                <div style="font-size:.78rem;color:var(--muted2)" id="dp-route">--</div>
+                            </div>
+                        </div>
+                        <div style="font-size:.75rem;color:var(--muted2)" id="dp-stops"></div>
                     </div>
-                </div>
-
-                <div class="block">
-                    <div class="block-label">Bus Number</div>
-                    <input type="text" id="driver-bus-num" class="field" placeholder="e.g.  TN 23 AB 1234" />
-                </div>
-                <div class="block">
-                    <div class="block-label">Full Route</div>
-                    <input type="text" id="driver-route" class="field" placeholder="e.g.  Ambur → Vellore → College" />
-                </div>
-                <div class="block">
-                    <div class="block-label">Stops (comma separated)</div>
-                    <input type="text" id="driver-stops" class="field"
-                        placeholder="e.g.  Ambur, Vaniyambadi, Pernambut, Vellore" />
-                </div>
-
-                <div class="toggle-item"
-                    style="margin-top: 10px; border-top: 1px solid var(--border); padding-top: 15px;">
-                    <span style="font-size: 0.9rem; font-weight: 600;">Save these details for next time</span>
-                    <label class="tog"><input type="checkbox" id="driver-save-check" checked /><span
-                            class="tog-slider"></span></label>
                 </div>
             </div>
 
@@ -351,9 +357,9 @@
                 </div>
                 <div class="dlc-coords" id="dlc-coords">Fetching GPS...</div>
 
-                <!-- Access Code Display -->
+                <!-- Access Code Display (for students) -->
                 <div class="access-code-box">
-                    <div class="acb-label">� Share this code with students:</div>
+                    <div class="acb-label">📢 Share this code with students:</div>
                     <div class="acb-code" id="dlc-access-code">----</div>
                     <div class="acb-hint">Students enter this code to track your bus</div>
                 </div>

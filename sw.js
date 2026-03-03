@@ -1,9 +1,9 @@
 /* =============================================
-   BusAlert — Service Worker
-   Enables: App install + Offline support
+   BusAlert — Service Worker v5
+   Enables: App install + Offline support + iOS notifications
    ============================================= */
 
-const CACHE = 'busAlert-v4';
+const CACHE = 'busAlert-v5';
 const FILES = [
     '/',
     '/index.html',
@@ -54,9 +54,30 @@ self.addEventListener('fetch', e => {
     );
 });
 
+// Notification click — bring app to foreground (critical for iOS wake-up)
+self.addEventListener('notificationclick', event => {
+    event.notification.close();
+    // Focus existing window or open new one
+    event.waitUntil(
+        self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
+            // If app is already open, focus it
+            for (const client of clientList) {
+                if (client.url.includes(self.location.origin) && 'focus' in client) {
+                    return client.focus();
+                }
+            }
+            // Otherwise open the app
+            if (self.clients.openWindow) {
+                return self.clients.openWindow('/');
+            }
+        })
+    );
+});
+
 // Periodic Sync / Background Keep-Alive
 self.addEventListener('periodicsync', (event) => {
     if (event.tag === 'bus-location-push') {
         // Keeps background worker from going completely dormant
     }
 });
+

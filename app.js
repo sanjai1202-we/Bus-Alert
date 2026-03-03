@@ -1,7 +1,6 @@
 /* ================================================================
-   BusAlert v4 — Full Feature Update
-   Fixes: Edit Home, SOS Alarm, Smart Auto-Stop, GPS Bug,
-          Driver Miss-Stop Alert, Bus Access Codes, Admin Page
+   BusAlert v5 — Bus Tracking & iOS Alarm Fix
+   Fixes: Bus not showing on map, iOS vibration/sound, refresh btn
    ================================================================ */
 
 'use strict';
@@ -38,10 +37,42 @@ const S = {
   myStudentName: '',
 };
 
-// ─── SOS ALARM ───────────────────────────────────────────────────
+// ─── BUS POLLER (backup for Firebase listener) ──────────────────
+let _busPoller = null;
+
+// ─── iOS AUDIO UNLOCK ───────────────────────────────────────────
+let _audioUnlocked = false;
+let _silentAudioCtx = null;
+
+function unlockAudioForIOS() {
+  if (_audioUnlocked) return;
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    // Play a silent buffer to unlock audio on iOS
+    const buf = ctx.createBuffer(1, 1, 22050);
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.connect(ctx.destination);
+    src.start(0);
+    _silentAudioCtx = ctx;
+    _audioUnlocked = true;
+    console.log('🔊 Audio unlocked for iOS');
+  } catch (e) { console.warn('Audio unlock failed:', e); }
+}
+
+// Unlock audio on first user interaction (required for iOS)
+['touchstart', 'touchend', 'click', 'keydown'].forEach(evt => {
+  document.addEventListener(evt, function _unlock() {
+    unlockAudioForIOS();
+    document.removeEventListener(evt, _unlock, true);
+  }, { once: true, capture: true });
+});
+
+// ─── SOS ALARM (iOS-compatible) ─────────────────────────────────
 let _sosVibeTimer = null;
 let _sosSoundTimer = null;
 let _audioCtx = null;
+let _sosOscillators = [];
 
 function startSosAlarm(mode) {
   S.sosActive = true;
@@ -50,43 +81,53 @@ function startSosAlarm(mode) {
   const overlayId = mode === 'sleep' ? 'sleep-sos' : 'track-sos';
   q('#' + overlayId).classList.remove('hidden');
 
-  // Bank-of-england level vibration loop
+  // Vibration loop — iOS doesn't support navigator.vibrate, so we fallback
   function vibeLoop() {
     if (!S.sosActive) return;
-    if (navigator.vibrate) navigator.vibrate([800, 200, 800, 200, 800, 400, 1200, 300, 1200]);
+    if (navigator.vibrate) {
+      navigator.vibrate([800, 200, 800, 200, 800, 400, 1200, 300, 1200]);
+    }
     _sosVibeTimer = setTimeout(vibeLoop, 4000);
   }
   vibeLoop();
 
-  // SOS sound loop (loud beeps)
+  // SOS sound loop — iOS-compatible: reuse unlocked AudioContext
   function soundLoop() {
     if (!S.sosActive) return;
     try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      _audioCtx = ctx;
+      // Reuse existing context (important for iOS) or create new
+      if (!_audioCtx || _audioCtx.state === 'closed') {
+        _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      const ctx = _audioCtx;
+      // Resume if suspended (iOS requires this)
+      if (ctx.state === 'suspended') ctx.resume();
+
       // SOS pattern: ... --- ...  (3 short, 3 long, 3 short)
       const pattern = [
-        [0, 0.15, 880], [0.2, 0.15, 880], [0.4, 0.15, 880],         // ...
-        [0.65, 0.45, 660], [1.15, 0.45, 660], [1.65, 0.45, 660],    // ---
-        [2.2, 0.15, 880], [2.4, 0.15, 880], [2.6, 0.15, 880],       // ...
+        [0, 0.15, 880], [0.2, 0.15, 880], [0.4, 0.15, 880],
+        [0.65, 0.45, 660], [1.15, 0.45, 660], [1.65, 0.45, 660],
+        [2.2, 0.15, 880], [2.4, 0.15, 880], [2.6, 0.15, 880],
       ];
       pattern.forEach(([t, dur, freq]) => {
         const o = ctx.createOscillator();
         const g = ctx.createGain();
         o.connect(g); g.connect(ctx.destination);
         o.frequency.value = freq; o.type = 'square';
-        g.gain.setValueAtTime(0.7, ctx.currentTime + t);
+        g.gain.setValueAtTime(1.0, ctx.currentTime + t);  // MAX volume
         g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t + dur);
         o.start(ctx.currentTime + t); o.stop(ctx.currentTime + t + dur + 0.05);
+        _sosOscillators.push(o);
       });
       _sosSoundTimer = setTimeout(soundLoop, 3500);
     } catch (e) {
+      console.warn('SOS sound error:', e);
       _sosSoundTimer = setTimeout(soundLoop, 3500);
     }
   }
   soundLoop();
 
-  // Also send a push notification (persistent)
+  // Send push notification (use SW for iOS compatibility)
   if (mode === 'sleep') {
     sendNotif('🔔 WAKE UP! Near Your Stop!', 'Get off the bus NOW — you are near your home stop!');
   } else {
@@ -105,8 +146,16 @@ function stopSosAlarm(mode) {
   // Clear vibe & sound timers
   clearTimeout(_sosVibeTimer);
   clearTimeout(_sosSoundTimer);
-  if (navigator.vibrate) navigator.vibrate(0); // stop vibration
-  if (_audioCtx) { try { _audioCtx.close(); } catch (e) { } _audioCtx = null; }
+  if (navigator.vibrate) navigator.vibrate(0);
+
+  // Stop all oscillators
+  _sosOscillators.forEach(o => { try { o.stop(); } catch (e) { } });
+  _sosOscillators = [];
+
+  // Don't close AudioContext on iOS — just suspend it (closing prevents reuse)
+  if (_audioCtx) {
+    try { _audioCtx.suspend(); } catch (e) { }
+  }
 
   // Hide overlays
   q('#sleep-sos')?.classList.add('hidden');
@@ -115,12 +164,8 @@ function stopSosAlarm(mode) {
 
   showToast('✅ Alarm stopped.');
 
-  // After stopping alarm in sleep mode, stop sleep mode automatically
-  if (mode === 'sleep') { /* user is awake, keep sleep mode on for next trip — don't stop */ }
-  if (mode === 'track') {
-    // Bus already passed, remain in tracking but reset alert
-    // Already handled by 1km auto-reset logic
-  }
+  if (mode === 'sleep') { /* user is awake, keep sleep mode on for next trip */ }
+  if (mode === 'track') { /* handled by 1km auto-reset logic */ }
 }
 
 // ─── BOOT ─────────────────────────────────────────────────────────
@@ -165,7 +210,6 @@ function loadLocal() {
   const sn = lsGet('ba_student_name'); if (sn) S.myStudentName = sn;
   const sr = lsGet('ba_sr'); if (sr) { q('#sleep-radius').value = sr; updateRadius('sleep'); }
   const tr = lsGet('ba_tr'); if (tr) { q('#track-radius').value = tr; updateRadius('track'); }
-  const sb = ls('ba_saved_buses'); if (sb) { S.savedBuses = sb; renderSavedBuses(); }
 }
 
 // ─── FIREBASE ────────────────────────────────────────────────────
@@ -202,32 +246,36 @@ function startBusListener() {
   if (!S.db) return;
   S.db.ref('buses').on('value', snap => {
     S.allBuses = snap.val() || {};
+    _handleBusUpdate();
+  });
+}
 
-    // update tracked bus on map
-    if (S.trackOn && S.trackedId && S.allBuses[S.trackedId]?.location) {
-      const loc = S.allBuses[S.trackedId].location;
+function _handleBusUpdate() {
+  // update tracked bus on map
+  if (S.trackOn && S.trackedId && S.allBuses[S.trackedId]?.location) {
+    const loc = S.allBuses[S.trackedId].location;
+    if (loc.lat && loc.lon) {
       moveBusOnMap(loc.lat, loc.lon);
       updateTrackInfo(loc);
     }
+  }
 
-    // Check if tracked bus went offline (driver stopped suddenly)
-    if (S.trackOn && S.trackedId) {
-      const b = S.allBuses[S.trackedId];
-      if (!b || !b.active) {
-        showToast('ℹ️ Driver ended the trip.');
-        // Don't crash — just show message, keep map open
-      } else if (b.location) {
-        const age = Date.now() - (b.location.timestamp || 0);
-        if (age > 5 * 60 * 1000) {
-          q('#map-status-hint').textContent = '⚠️ Bus GPS signal lost (5+ min old)';
-        }
+  // Check if tracked bus went offline
+  if (S.trackOn && S.trackedId) {
+    const b = S.allBuses[S.trackedId];
+    if (!b || !b.active) {
+      showToast('ℹ️ Driver ended the trip.');
+    } else if (b.location) {
+      const age = Date.now() - (b.location.timestamp || 0);
+      if (age > 5 * 60 * 1000) {
+        q('#map-status-hint').textContent = '⚠️ Bus GPS signal lost (5+ min old)';
       }
     }
+  }
 
-    // refresh search list if open
-    const q2 = q('#route-search').value.trim();
-    if (q2.length > 0) renderBusList(q2);
-  });
+  // refresh search list if open
+  const q2 = q('#route-search')?.value?.trim();
+  if (q2 && q2.length > 0) renderBusList(q2);
 }
 
 // ─── TAB SWITCH ──────────────────────────────────────────────────
@@ -421,19 +469,80 @@ function _doStartTracking(busId) {
   q('#map-bus-num').textContent = 'Bus ' + (bus.busNumber || '--');
   q('#map-bus-route').textContent = bus.route || '--';
 
+  // Destroy old map completely so we get a fresh one
+  if (S.map) {
+    try { S.map.remove(); } catch (e) { }
+    S.map = null; S.busMarker = null; S.stopMarker = null; S.stopCircle = null;
+  }
+
   setTimeout(() => {
     initMap();
-    if (bus.location) {
+    // Immediately show bus if location exists
+    if (bus.location && bus.location.lat && bus.location.lon) {
       moveBusOnMap(bus.location.lat, bus.location.lon);
       updateTrackInfo(bus.location);
     }
     if (S.stopLoc) drawStopMarker(S.stopLoc.lat, S.stopLoc.lon);
-  }, 100);
+
+    // Start polling as backup (Firebase listener may lag)
+    startBusPoller(busId);
+  }, 200);
+}
+
+// Poll Firebase every 2s for the tracked bus location (backup)
+function startBusPoller(busId) {
+  stopBusPoller();
+  _busPoller = setInterval(() => {
+    if (!S.trackOn || !S.trackedId || !S.db) { stopBusPoller(); return; }
+    S.db.ref(`buses/${S.trackedId}/location`).once('value', snap => {
+      const loc = snap.val();
+      if (loc && loc.lat && loc.lon) {
+        // Update allBuses cache
+        if (S.allBuses[S.trackedId]) {
+          S.allBuses[S.trackedId].location = loc;
+        }
+        moveBusOnMap(loc.lat, loc.lon);
+        updateTrackInfo(loc);
+      }
+    });
+  }, 2000);  // Poll every 2 seconds
+}
+
+function stopBusPoller() {
+  if (_busPoller) { clearInterval(_busPoller); _busPoller = null; }
+}
+
+// Refresh button handler
+function refreshTracking() {
+  if (!S.trackOn || !S.trackedId || !S.db) {
+    showToast('⚠️ Not tracking any bus.');
+    return;
+  }
+  showToast('🔄 Refreshing bus location...');
+  const btn = q('#btn-refresh-map');
+  if (btn) { btn.classList.add('spinning'); setTimeout(() => btn.classList.remove('spinning'), 1000); }
+
+  S.db.ref(`buses/${S.trackedId}`).once('value', snap => {
+    const data = snap.val();
+    if (data) {
+      S.allBuses[S.trackedId] = data;
+      if (data.location && data.location.lat && data.location.lon) {
+        moveBusOnMap(data.location.lat, data.location.lon);
+        updateTrackInfo(data.location);
+        showToast('✅ Bus location updated!');
+      } else {
+        showToast('⚠️ Bus has no GPS signal yet.');
+      }
+    } else {
+      showToast('❌ Bus data not found.');
+    }
+  });
 }
 
 function stopTracking() {
   if (S.sosActive) stopSosAlarm('track');
   stopTrackingInner(false);
+  stopBusPoller();
   showCodeEntryView();
 }
 
@@ -442,6 +551,7 @@ function stopTrackingInner(silent) {
   S.trackedId = null;
   S.trackAlerted = false;
   S.alertedBusPos = null;
+  stopBusPoller();
   if (!silent) setStatus('Idle', false);
   q('#track-alert-banner')?.classList.add('hidden');
 }
@@ -449,9 +559,16 @@ function stopTrackingInner(silent) {
 // ─── MAP ─────────────────────────────────────────────────────────
 function initMap() {
   if (S.map) return;
+  const mapEl = document.getElementById('live-map');
+  if (!mapEl) { console.error('Map element not found'); return; }
+
   S.map = L.map('live-map', { zoomControl: true, attributionControl: false }).setView([12.9716, 77.5946], 13);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(S.map);
-  setTimeout(() => S.map.invalidateSize(), 200);
+
+  // Multiple invalidateSize calls to handle delayed rendering
+  setTimeout(() => S.map && S.map.invalidateSize(), 200);
+  setTimeout(() => S.map && S.map.invalidateSize(), 500);
+  setTimeout(() => S.map && S.map.invalidateSize(), 1000);
 }
 
 function busIcon() {
@@ -470,32 +587,50 @@ function stopIcon() {
 }
 
 function moveBusOnMap(lat, lon) {
-  if (!S.map) return;
+  if (!S.map) {
+    console.warn('moveBusOnMap: map not ready, queuing...');
+    setTimeout(() => moveBusOnMap(lat, lon), 500);
+    return;
+  }
+  if (!lat || !lon || isNaN(lat) || isNaN(lon)) return;
+
   const newLatLng = L.latLng(lat, lon);
+
   if (!S.busMarker) {
     S.busMarker = L.marker([lat, lon], { icon: busIcon(), zIndexOffset: 100 }).addTo(S.map);
     S.map.setView([lat, lon], 15, { animate: true });
+    console.log('🚌 Bus marker created at', lat, lon);
   } else {
-    animateMarker(S.busMarker, S.busMarker.getLatLng(), newLatLng, 2000);
+    const prev = S.busMarker.getLatLng();
+    // Only animate if position actually changed
+    if (Math.abs(prev.lat - lat) > 0.000001 || Math.abs(prev.lng - lon) > 0.000001) {
+      animateMarker(S.busMarker, prev, newLatLng, 2000);
+    }
   }
   S.busLatLng = newLatLng;
-  const bounds = S.map.getBounds();
-  if (!bounds.contains(newLatLng)) {
-    S.map.panTo(newLatLng, { animate: true, duration: 1.5 });
-  }
+
+  // Pan map to keep bus visible
+  try {
+    const bounds = S.map.getBounds();
+    if (!bounds.contains(newLatLng)) {
+      S.map.panTo(newLatLng, { animate: true, duration: 1.5 });
+    }
+  } catch (e) { }
 }
 
+let _animFrame = null;
 function animateMarker(marker, from, to, durationMs) {
+  if (_animFrame) cancelAnimationFrame(_animFrame);
   const startTime = performance.now();
   function frame(now) {
     const t = Math.min((now - startTime) / durationMs, 1);
     const lat = from.lat + (to.lat - from.lat) * easeInOut(t);
     const lon = from.lng + (to.lng - from.lng) * easeInOut(t);
     marker.setLatLng([lat, lon]);
-    if (t < 1) requestAnimationFrame(frame);
-    else marker.setLatLng(to);
+    if (t < 1) _animFrame = requestAnimationFrame(frame);
+    else { marker.setLatLng(to); _animFrame = null; }
   }
-  requestAnimationFrame(frame);
+  _animFrame = requestAnimationFrame(frame);
 }
 function easeInOut(t) { return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t; }
 
@@ -657,7 +792,11 @@ function renderHomeCoord() {
   q('#btn-set-home').classList.add('hidden');
 }
 
-function toggleSleepMode() { S.sleepOn ? stopSleep() : startSleep(); }
+function toggleSleepMode() {
+  // Unlock audio on iOS when user taps the button
+  unlockAudioForIOS();
+  S.sleepOn ? stopSleep() : startSleep();
+}
 
 function startSleep() {
   if (!S.home) { showToast('⚠️ Set home location first!'); return; }
@@ -739,11 +878,12 @@ function onSleepPos(pos) {
 }
 
 // ─── DRIVER MODE ─────────────────────────────────────────────────
+let _driverProfile = null;  // verified bus profile from admin
+
 function toggleDriver() { S.driverOn ? stopDriver() : startDriver(); }
 
-// ── FIX 7: Generate unique access code for each bus ──
+// ── Generate access code (same logic as admin) ──
 function generateAccessCode(busNum) {
-  // Create a deterministic-ish but "daily" code based on bus number + day
   const today = new Date();
   const dayStr = `${today.getFullYear()}${today.getMonth()}${today.getDate()}`;
   const seed = busNum.replace(/\s+/g, '') + dayStr;
@@ -752,8 +892,7 @@ function generateAccessCode(busNum) {
     hash = ((hash << 5) - hash) + seed.charCodeAt(i);
     hash |= 0;
   }
-  // Make a 4-character alphanumeric code
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no confusable chars
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let code = '';
   let h = Math.abs(hash);
   for (let i = 0; i < 4; i++) {
@@ -763,27 +902,64 @@ function generateAccessCode(busNum) {
   return code;
 }
 
-function startDriver() {
-  const num = q('#driver-bus-num').value.trim();
-  const route = q('#driver-route').value.trim();
-  const stops = q('#driver-stops').value.trim().split(',').map(s => s.trim()).filter(Boolean);
-  if (!num || !route) { showToast('⚠️ Enter bus number and route!'); return; }
+// Driver enters the code shared by admin
+function driverLoginByCode() {
+  const code = q('#driver-code-input').value.trim().toUpperCase();
+  if (!code) { showToast('⚠️ Enter the bus code!'); return; }
   if (!S.fbOk) { showToast('⏳ Firebase not connected yet.'); return; }
 
-  // Save profile if checked
-  if (q('#driver-save-check').checked) saveBusProfile(num, route, stops);
+  const statusEl = q('#driver-code-status');
+  statusEl.textContent = '🔍 Looking up bus...';
+  statusEl.style.color = 'var(--muted2)';
 
-  const accessCode = generateAccessCode(num);
+  // Search bus_profiles for matching accessCode
+  S.db.ref('bus_profiles').orderByChild('accessCode').equalTo(code).once('value', snap => {
+    const data = snap.val();
+    if (!data) {
+      statusEl.textContent = '❌ No bus found with this code. Check with your admin.';
+      statusEl.style.color = 'var(--red)';
+      q('#driver-bus-preview').classList.add('hidden');
+      _driverProfile = null;
+      return;
+    }
+
+    // Found the bus profile
+    const [profileId, profile] = Object.entries(data)[0];
+    _driverProfile = { ...profile, profileId };
+
+    statusEl.textContent = '✅ Bus found! Tap "Go Live" to start sharing.';
+    statusEl.style.color = 'var(--green)';
+
+    // Show bus preview
+    q('#dp-busnum').textContent = profile.busNumber || '--';
+    q('#dp-route').textContent = profile.route || '--';
+    q('#dp-stops').textContent = '🚏 ' + ((profile.stops || []).join(', ') || 'No stops listed');
+    q('#driver-bus-preview').classList.remove('hidden');
+
+    showToast(`✅ Bus ${profile.busNumber} loaded!`);
+  });
+}
+
+function startDriver() {
+  if (!_driverProfile) {
+    showToast('⚠️ Enter the bus code first and verify!');
+    return;
+  }
+  if (!S.fbOk) { showToast('⏳ Firebase not connected yet.'); return; }
+
+  const { busNumber: num, route, stops, accessCode } = _driverProfile;
+
+  // The student tracking code is the SAME as the admin/driver code
   S.driverAccessCode = accessCode;
   S.driverBusId = 'bus_' + num.replace(/\s+/g, '_').toUpperCase() + '_' + Date.now();
   S.driverUpdates = 0;
 
   S.db.ref(`buses/${S.driverBusId}`).set({
-    busNumber: num, route, stops, active: true,
+    busNumber: num, route, stops: stops || [], active: true,
     location: null, startedAt: Date.now(), accessCode
   }).then(() => {
     S.driverOn = true;
-    q('#driver-form').classList.add('hidden');
+    q('#driver-login-view').classList.add('hidden');
     q('#driver-live-card').classList.remove('hidden');
     q('#dlc-busnum').textContent = 'Bus ' + num;
     q('#dlc-route').textContent = route;
@@ -791,12 +967,9 @@ function startDriver() {
     q('#btn-driver').classList.add('stop-mode');
     q('#driver-btn-label').innerHTML = '🔴 &nbsp;Stop Sharing';
     setStatus('Driver Live 🟢', true);
-    showToast(`🟢 LIVE: Bus ${num} | Code: ${accessCode}`);
+    showToast(`🟢 LIVE: Bus ${num} | Student Code: ${accessCode}`);
 
-    // ── FIX 4: Robust GPS watch for driver too ──
     startRobustDriverWatch();
-
-    // Listen for student miss-stop alerts
     listenDriverAlerts();
 
   }).catch(e => showToast('❌ Firebase: ' + e.message));
@@ -828,12 +1001,17 @@ function stopDriver() {
   S.driverOn = false;
   clearTimeout(S.geoWatchTimer);
   if (S.driverWid !== null) { navigator.geolocation.clearWatch(S.driverWid); S.driverWid = null; }
-  if (S.db && S.driverBusId) S.db.ref(`buses/${S.driverBusId}`).update({ active: false, endedAt: Date.now() });
-  q('#driver-form').classList.remove('hidden');
+  if (S.db && S.driverBusId) S.db.ref(`buses/${S.driverBusId}`).remove();
+  q('#driver-login-view').classList.remove('hidden');
   q('#driver-live-card').classList.add('hidden');
   q('#btn-driver').classList.remove('stop-mode');
   q('#driver-btn-label').innerHTML = '🟢 &nbsp;Go Live — Share Location';
   q('#driver-alert-card').classList.add('hidden');
+  // Reset driver profile so they can enter code again
+  _driverProfile = null;
+  q('#driver-bus-preview').classList.add('hidden');
+  q('#driver-code-input').value = '';
+  q('#driver-code-status').textContent = '';
   setStatus('Idle', false);
   showToast('⏹ Location sharing stopped.');
 }
@@ -995,16 +1173,23 @@ function getDistance(la1, lo1, la2, lo2) {
 function toR(d) { return d * Math.PI / 180; }
 
 // ─── ALERT HELPERS ───────────────────────────────────────────────
-function doVibrate() { navigator.vibrate?.([600, 150, 600, 150, 600, 200, 1000]); }
+function doVibrate() {
+  if (navigator.vibrate) {
+    navigator.vibrate([600, 150, 600, 150, 600, 200, 1000]);
+  }
+  // Fallback: play a short beep for iOS (no vibration API)
+  doSound();
+}
 
 function doSound() {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (ctx.state === 'suspended') ctx.resume();
     [[880, 0, .3], [1108, .35, .3], [1320, .7, .55], [880, 1.3, .3], [1320, 2, .7]].forEach(([f, t, d]) => {
       const o = ctx.createOscillator(), g = ctx.createGain();
       o.connect(g); g.connect(ctx.destination);
       o.frequency.value = f; o.type = 'sine';
-      g.gain.setValueAtTime(.5, ctx.currentTime + t);
+      g.gain.setValueAtTime(1.0, ctx.currentTime + t);
       g.gain.exponentialRampToValueAtTime(.001, ctx.currentTime + t + d);
       o.start(ctx.currentTime + t); o.stop(ctx.currentTime + t + d);
     });
@@ -1012,13 +1197,38 @@ function doSound() {
 }
 
 function sendNotif(title, body) {
-  if (Notification?.permission === 'granted') {
+  // Method 1: Use Service Worker notification (works on iOS Safari 16.4+)
+  if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+    navigator.serviceWorker.ready.then(reg => {
+      reg.showNotification(title, {
+        body,
+        icon: '🚌',
+        badge: '🚌',
+        vibrate: [300, 100, 300, 100, 300],
+        requireInteraction: true,
+        tag: 'bus-alert-' + Date.now(),
+        renotify: true,
+      }).catch(e => {
+        console.warn('SW notification failed, using fallback:', e);
+        _fallbackNotif(title, body);
+      });
+    }).catch(() => _fallbackNotif(title, body));
+    return;
+  }
+  // Method 2: Classic Notification API
+  _fallbackNotif(title, body);
+}
+
+function _fallbackNotif(title, body) {
+  if ('Notification' in window && Notification.permission === 'granted') {
     try { new Notification(title, { body, requireInteraction: true }); } catch (e) { }
   }
 }
 
 function reqNotifPerm() {
-  if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
 }
 
 // ─── WAKE LOCK ───────────────────────────────────────────────────
@@ -1063,44 +1273,6 @@ function showToast(msg) {
   _tt = setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.classList.add('hidden'), 400); }, 3500);
 }
 
-// ─── SAVED BUS PROFILES ──────────────────────────────────────────
-function saveBusProfile(num, route, stops) {
-  const exists = S.savedBuses.findIndex(b => b.num === num && b.route === route);
-  const profile = { num, route, stops };
-  if (exists > -1) S.savedBuses[exists] = profile;
-  else S.savedBuses.unshift(profile);
-  if (S.savedBuses.length > 5) S.savedBuses.pop();
-  lsSave('ba_saved_buses', S.savedBuses);
-  renderSavedBuses();
-}
-
-function renderSavedBuses() {
-  const list = q('#saved-buses-list');
-  const section = q('#saved-buses-section');
-  if (!S.savedBuses.length) { section?.classList.add('hidden'); return; }
-  section?.classList.remove('hidden');
-  list.innerHTML = S.savedBuses.map((b, i) => `
-    <div class="saved-pill" onclick="useSavedBus(${i})">
-      🚌 ${esc(b.num)}
-      <span class="del-saved" onclick="event.stopPropagation();deleteSavedBus(${i})">✕</span>
-    </div>
-  `).join('');
-}
-
-function useSavedBus(idx) {
-  const b = S.savedBuses[idx];
-  if (!b) return;
-  q('#driver-bus-num').value = b.num;
-  q('#driver-route').value = b.route;
-  q('#driver-stops').value = b.stops.join(', ');
-  showToast(`📝 Loaded: Bus ${b.num}`);
-}
-
-function deleteSavedBus(idx) {
-  S.savedBuses.splice(idx, 1);
-  lsSave('ba_saved_buses', S.savedBuses);
-  renderSavedBuses();
-}
 
 // ─── SERVICE WORKER + PWA INSTALL ────────────────────────────────
 let _installPrompt = null;

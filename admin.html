@@ -566,6 +566,217 @@
             text-align: center;
             padding: 12px 0;
         }
+
+        /* ── Create Bus Section ── */
+        .create-bus-section {
+            border-top: 1px solid var(--border);
+            padding: 12px 16px;
+            flex-shrink: 0;
+        }
+
+        .create-bus-title {
+            font-size: .72rem;
+            font-weight: 700;
+            color: var(--primary);
+            text-transform: uppercase;
+            letter-spacing: .5px;
+            margin-bottom: 10px;
+        }
+
+        .create-bus-form {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .create-bus-form .admin-input {
+            width: 100%;
+            padding: 9px 12px;
+            background: var(--bg);
+            border: 1.5px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-family: var(--font);
+            font-size: .82rem;
+            outline: none;
+            transition: border-color .2s;
+        }
+
+        .create-bus-form .admin-input:focus {
+            border-color: var(--primary);
+        }
+
+        .create-bus-form .admin-input::placeholder {
+            color: var(--muted);
+        }
+
+        .create-bus-btn {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            background: var(--primary);
+            color: white;
+            font-family: var(--font);
+            font-size: .82rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all .2s;
+        }
+
+        .create-bus-btn:hover {
+            background: #4f46e5;
+            transform: translateY(-1px);
+        }
+
+        .code-result-box {
+            background: linear-gradient(135deg, #1e1b4b, #312e81);
+            border-radius: 10px;
+            padding: 12px;
+            text-align: center;
+            margin-top: 6px;
+        }
+
+        .code-result-label {
+            font-size: .68rem;
+            color: rgba(255, 255, 255, .6);
+            text-transform: uppercase;
+            letter-spacing: .5px;
+        }
+
+        .code-result-val {
+            font-size: 2rem;
+            font-weight: 900;
+            font-family: monospace;
+            color: white;
+            letter-spacing: 6px;
+        }
+
+        .code-result-hint {
+            font-size: .68rem;
+            color: rgba(255, 255, 255, .5);
+            margin-top: 4px;
+        }
+
+        /* ── Bus Profile Cards (registered buses) ── */
+        .profile-card {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 10px 12px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .profile-card::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: var(--primary);
+            border-radius: 3px 0 0 3px;
+        }
+
+        .pc-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+
+        .pc-num {
+            font-size: .88rem;
+            font-weight: 800;
+        }
+
+        .pc-code {
+            font-size: .72rem;
+            font-weight: 700;
+            font-family: monospace;
+            color: var(--primary);
+            background: rgba(99, 102, 241, .15);
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+
+        .pc-route {
+            font-size: .72rem;
+            color: var(--sub);
+            margin-bottom: 4px;
+        }
+
+        .pc-stops {
+            font-size: .68rem;
+            color: var(--muted);
+        }
+
+        .pc-actions {
+            display: flex;
+            gap: 6px;
+            margin-top: 6px;
+        }
+
+        .pc-del-btn {
+            background: none;
+            border: 1px solid rgba(239, 68, 68, .3);
+            color: var(--red);
+            font-family: var(--font);
+            font-size: .7rem;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all .2s;
+        }
+
+        .pc-del-btn:hover {
+            background: rgba(239, 68, 68, .1);
+        }
+
+        /* Sidebar tabs */
+        .sidebar-tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .sidebar-tab {
+            flex: 1;
+            padding: 10px 8px;
+            text-align: center;
+            font-size: .72rem;
+            font-weight: 700;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: .5px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all .2s;
+            font-family: var(--font);
+        }
+
+        .sidebar-tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        .sidebar-tab:hover {
+            color: var(--text);
+        }
+
+        .sidebar-panel {
+            display: none;
+            flex: 1;
+            overflow-y: auto;
+            flex-direction: column;
+        }
+
+        .sidebar-panel.active {
+            display: flex;
+        }
     </style>
 </head>
 
@@ -598,7 +809,7 @@
             </div>
             <div class="admin-actions">
                 <div class="admin-stat-badge">Live Buses: <span id="live-count">0</span></div>
-                <div class="admin-stat-badge">Total: <span id="total-count" style="color:var(--sub)">0</span></div>
+                <div class="admin-stat-badge">Registered: <span id="total-count" style="color:var(--sub)">0</span></div>
                 <button class="logout-btn" onclick="doLogout()">⬅ Logout</button>
             </div>
         </header>
@@ -606,18 +817,68 @@
         <div class="admin-body" style="position:relative">
             <!-- Sidebar -->
             <div class="sidebar">
-                <div class="sidebar-header">
-                    All Buses
-                    <button class="refresh-btn" onclick="refreshBuses()">↻ Refresh</button>
+                <!-- Sidebar Tabs -->
+                <div class="sidebar-tabs">
+                    <button class="sidebar-tab active" id="stab-live" onclick="switchSidebarTab('live')">🟢
+                        Live</button>
+                    <button class="sidebar-tab" id="stab-history" onclick="switchSidebarTab('history')">📜
+                        History</button>
+                    <button class="sidebar-tab" id="stab-manage" onclick="switchSidebarTab('manage')">⚙️ Manage</button>
                 </div>
-                <div id="bus-sidebar-list">
-                    <div class="no-buses-hint">🔄 Connecting to Firebase...</div>
+
+                <!-- Tab 1: Live Buses (only truly active, < 5 min) -->
+                <div class="sidebar-panel active" id="spanel-live">
+                    <div class="sidebar-header">
+                        Live Now
+                        <button class="refresh-btn" onclick="refreshBuses()">↻ Refresh</button>
+                    </div>
+                    <div id="bus-sidebar-list">
+                        <div class="no-buses-hint">🔄 Connecting to Firebase...</div>
+                    </div>
+                    <!-- Student Alerts Section -->
+                    <div class="alert-section">
+                        <div class="alert-section-title">⚠️ Student Missed-Stop Alerts</div>
+                        <div id="alert-list">
+                            <div class="no-alert">No active alerts</div>
+                        </div>
+                    </div>
                 </div>
-                <!-- Student Alerts Section -->
-                <div class="alert-section">
-                    <div class="alert-section-title">⚠️ Student Missed-Stop Alerts</div>
-                    <div id="alert-list">
-                        <div class="no-alert">No active alerts</div>
+
+                <!-- Tab 2: History (stale/past buses) -->
+                <div class="sidebar-panel" id="spanel-history">
+                    <div class="sidebar-header">
+                        Past Sessions
+                        <button class="refresh-btn" onclick="clearAllHistory()">🗑 Clear All</button>
+                    </div>
+                    <div id="history-sidebar-list">
+                        <div class="no-buses-hint">No past sessions</div>
+                    </div>
+                </div>
+
+                <!-- Tab 2: Manage Bus Profiles -->
+                <div class="sidebar-panel" id="spanel-manage">
+                    <!-- Create New Bus -->
+                    <div class="create-bus-section">
+                        <div class="create-bus-title">➕ Register New Bus</div>
+                        <div class="create-bus-form">
+                            <input class="admin-input" type="text" id="adm-bus-num"
+                                placeholder="Bus Number (e.g. TN 23 AB 1234)" />
+                            <input class="admin-input" type="text" id="adm-bus-route"
+                                placeholder="Route (e.g. Ambur → Vellore → College)" />
+                            <input class="admin-input" type="text" id="adm-bus-stops"
+                                placeholder="Stops (comma separated)" />
+                            <button class="create-bus-btn" onclick="createBusProfile()">🚌 Create Bus & Generate
+                                Code</button>
+                        </div>
+                        <div id="code-result" style="display:none"></div>
+                    </div>
+
+                    <!-- Registered Profiles -->
+                    <div style="padding: 12px 16px;">
+                        <div class="create-bus-title" style="color:var(--sub)">📋 Registered Buses</div>
+                        <div id="profile-list" style="display:flex;flex-direction:column;gap:8px">
+                            <div class="no-alert">No buses registered yet</div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -665,7 +926,27 @@
             projectId: "bus-alert-3941d"
         };
 
-        let db = null, map = null, markers = {}, allBuses = {}, selectedId = null, alertMarkers = {};
+        let db = null, map = null, markers = {}, allBuses = {}, allProfiles = {}, selectedId = null, alertMarkers = {};
+
+        // ── DETERMINISTIC CODE GENERATOR (same as app.js) ──
+        function generateAccessCode(busNum) {
+            const today = new Date();
+            const dayStr = `${today.getFullYear()}${today.getMonth()}${today.getDate()}`;
+            const seed = busNum.replace(/\s+/g, '') + dayStr;
+            let hash = 0;
+            for (let i = 0; i < seed.length; i++) {
+                hash = ((hash << 5) - hash) + seed.charCodeAt(i);
+                hash |= 0;
+            }
+            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+            let code = '';
+            let h = Math.abs(hash);
+            for (let i = 0; i < 4; i++) {
+                code += chars[h % chars.length];
+                h = Math.floor(h / chars.length);
+            }
+            return code;
+        }
 
         function doLogin() {
             const user = document.getElementById('adm-user').value.trim();
@@ -701,6 +982,7 @@
                 db = window.firebase.database();
                 listenBuses();
                 listenAlerts();
+                listenProfiles();
             });
         }
 
@@ -724,10 +1006,134 @@
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
         }
 
+        // ── SIDEBAR TABS ──
+        function switchSidebarTab(tab) {
+            ['live', 'history', 'manage'].forEach(t => {
+                document.getElementById('stab-' + t).classList.toggle('active', t === tab);
+                document.getElementById('spanel-' + t).classList.toggle('active', t === tab);
+            });
+        }
+
+        // ── BUS PROFILES (Admin creates these) ──
+        function listenProfiles() {
+            db.ref('bus_profiles').on('value', snap => {
+                allProfiles = snap.val() || {};
+                renderProfiles();
+            });
+        }
+
+        function createBusProfile() {
+            const num = document.getElementById('adm-bus-num').value.trim();
+            const route = document.getElementById('adm-bus-route').value.trim();
+            const stopsRaw = document.getElementById('adm-bus-stops').value.trim();
+            const stops = stopsRaw.split(',').map(s => s.trim()).filter(Boolean);
+
+            if (!num || !route) { alert('⚠️ Enter bus number and route!'); return; }
+            if (!db) { alert('⏳ Firebase not connected yet.'); return; }
+
+            const code = generateAccessCode(num);
+            const profileId = 'profile_' + num.replace(/\s+/g, '_').toUpperCase();
+
+            const profileData = {
+                busNumber: num,
+                route: route,
+                stops: stops,
+                accessCode: code,
+                createdAt: Date.now(),
+                createdBy: 'admin'
+            };
+
+            db.ref(`bus_profiles/${profileId}`).set(profileData).then(() => {
+                // Show generated code
+                const resultEl = document.getElementById('code-result');
+                resultEl.style.display = 'block';
+                resultEl.innerHTML = `
+                    <div class="code-result-box">
+                        <div class="code-result-label">Driver & Student Code</div>
+                        <div class="code-result-val">${code}</div>
+                        <div class="code-result-hint">Share this code with the driver.<br>Same code for both driver login and student tracking.</div>
+                    </div>`;
+
+                // Clear form
+                document.getElementById('adm-bus-num').value = '';
+                document.getElementById('adm-bus-route').value = '';
+                document.getElementById('adm-bus-stops').value = '';
+
+                // Auto-hide after 10s
+                setTimeout(() => { resultEl.style.display = 'none'; }, 10000);
+            }).catch(e => alert('❌ Error: ' + e.message));
+        }
+
+        function renderProfiles() {
+            const list = document.getElementById('profile-list');
+            const entries = Object.entries(allProfiles);
+            if (!entries.length) {
+                list.innerHTML = '<div class="no-alert">No buses registered yet.<br>Create one above.</div>';
+                return;
+            }
+            list.innerHTML = entries.map(([id, p]) => `
+                <div class="profile-card">
+                    <div class="pc-top">
+                        <span class="pc-num">🚌 ${esc(p.busNumber || '--')}</span>
+                        <span class="pc-code">${p.accessCode || '----'}</span>
+                    </div>
+                    <div class="pc-route">📍 ${esc(p.route || '--')}</div>
+                    <div class="pc-stops">🚏 ${(p.stops || []).join(', ') || 'No stops'}</div>
+                    <div class="pc-actions">
+                        <button class="pc-del-btn" onclick="deleteProfile('${id}')">🗑 Delete</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function deleteProfile(id) {
+            if (!confirm('Delete this bus profile? The driver will no longer be able to use its code.')) return;
+            db.ref(`bus_profiles/${id}`).remove();
+        }
+
+        // ── LIVE BUSES ──
+        let liveBuses = {};    // GPS < 5 min ago
+        let historyBuses = {}; // GPS > 5 min ago (stale)
+
+        const LIVE_THRESHOLD = 5 * 60 * 1000;   // 5 minutes
+        const DELETE_THRESHOLD = 24 * 60 * 60 * 1000; // 24 hours
+
         function listenBuses() {
             db.ref('buses').on('value', snap => {
-                allBuses = snap.val() || {};
+                const rawBuses = snap.val() || {};
+                allBuses = {};
+                liveBuses = {};
+                historyBuses = {};
+
+                Object.entries(rawBuses).forEach(([id, b]) => {
+                    // Skip and delete inactive entries
+                    if (!b.active) {
+                        db.ref(`buses/${id}`).remove();
+                        if (markers[id]) { map.removeLayer(markers[id]); delete markers[id]; }
+                        return;
+                    }
+
+                    const age = b.location?.timestamp ? (Date.now() - b.location.timestamp) : Infinity;
+
+                    // Auto-delete entries older than 24 hours
+                    if (age > DELETE_THRESHOLD) {
+                        db.ref(`buses/${id}`).remove();
+                        if (markers[id]) { map.removeLayer(markers[id]); delete markers[id]; }
+                        return;
+                    }
+
+                    allBuses[id] = b;
+
+                    // Separate into live vs history
+                    if (age < LIVE_THRESHOLD) {
+                        liveBuses[id] = b;
+                    } else {
+                        historyBuses[id] = b;
+                    }
+                });
+
                 renderSidebar();
+                renderHistory();
                 updateMapMarkers();
                 updateCounts();
             });
@@ -740,30 +1146,21 @@
             });
         }
 
+        // Live sidebar — only buses with GPS data < 5 minutes old
         function renderSidebar() {
             const list = document.getElementById('bus-sidebar-list');
-            const entries = Object.entries(allBuses);
+            const entries = Object.entries(liveBuses);
             if (!entries.length) {
-                list.innerHTML = '<div class="no-buses-hint">No buses registered yet.<br>Drivers need to go live first.</div>';
+                list.innerHTML = '<div class="no-buses-hint">No live buses right now.<br>When a driver goes live, they\'ll appear here.</div>';
                 return;
             }
-            entries.sort((a, b) => {
-                const aTs = a[1].location?.timestamp || 0;
-                const bTs = b[1].location?.timestamp || 0;
-                return bTs - aTs;
-            });
+            entries.sort((a, b) => (b[1].location?.timestamp || 0) - (a[1].location?.timestamp || 0));
             list.innerHTML = entries.map(([id, b]) => {
-                const age = b.location?.timestamp ? (Date.now() - b.location.timestamp) : Infinity;
-                const isLive = b.active && age < 5 * 60 * 1000;
-                const isStale = b.active && age >= 5 * 60 * 1000 && age < 30 * 60 * 1000;
-                const cls = isLive ? 'live' : isStale ? 'stale' : 'offline';
-                const statusTxt = isLive ? 'LIVE' : isStale ? 'STALE' : 'OFFLINE';
-                const rowCls = isLive ? '' : isStale ? ' stale' : ' offline';
                 const code = b.accessCode || '----';
-                return `<div class="bus-row${rowCls}${selectedId === id ? ' selected' : ''}" onclick="selectBus('${id}')">
+                return `<div class="bus-row${selectedId === id ? ' selected' : ''}" onclick="selectBus('${id}')">
       <div class="br-top">
         <span class="br-num">🚌 ${esc(b.busNumber || '--')}</span>
-        <span class="br-status ${cls}">${statusTxt}</span>
+        <span class="br-status live">LIVE</span>
       </div>
       <div class="br-route">${esc(b.route || '--')}</div>
       <div class="br-meta">
@@ -773,6 +1170,37 @@
       <div class="br-code">CODE: ${code}</div>
     </div>`;
             }).join('');
+        }
+
+        // History sidebar — buses with GPS data > 5 minutes old
+        function renderHistory() {
+            const list = document.getElementById('history-sidebar-list');
+            const entries = Object.entries(historyBuses);
+            if (!entries.length) {
+                list.innerHTML = '<div class="no-buses-hint">No past sessions.<br>Old tracking sessions appear here.</div>';
+                return;
+            }
+            entries.sort((a, b) => (b[1].location?.timestamp || 0) - (a[1].location?.timestamp || 0));
+            list.innerHTML = entries.map(([id, b]) => {
+                return `<div class="bus-row offline" onclick="selectBus('${id}')">
+      <div class="br-top">
+        <span class="br-num">🚍 ${esc(b.busNumber || '--')}</span>
+        <span class="br-status offline">ENDED</span>
+      </div>
+      <div class="br-route">${esc(b.route || '--')}</div>
+      <div class="br-meta">
+        <span>⏱ Last seen: ${timeAgo(b.location?.timestamp)}</span>
+      </div>
+    </div>`;
+            }).join('');
+        }
+
+        function clearAllHistory() {
+            if (!confirm('Delete all past bus tracking sessions?')) return;
+            Object.keys(historyBuses).forEach(id => {
+                db.ref(`buses/${id}`).remove();
+                if (markers[id]) { map.removeLayer(markers[id]); delete markers[id]; }
+            });
         }
 
         function selectBus(id) {
@@ -806,15 +1234,21 @@
         }
 
         function updateMapMarkers() {
-            Object.entries(allBuses).forEach(([id, b]) => {
-                if (!b.location) return;
+            // Remove markers for buses that no longer exist or are now history
+            Object.keys(markers).forEach(id => {
+                if (!allBuses[id] || !liveBuses[id]) {
+                    map.removeLayer(markers[id]);
+                    delete markers[id];
+                }
+            });
+            // Add/update markers for active live buses
+            Object.entries(liveBuses).forEach(([id, b]) => {
+                if (!b.location || !b.active) return;
                 const { lat, lon } = b.location;
-                const age = (Date.now() - (b.location.timestamp || 0));
-                const isLive = b.active && age < 5 * 60 * 1000;
-                const color = isLive ? '#22c55e' : '#f59e0b';
+                const color = '#22c55e';
                 const icon = L.divIcon({
                     className: '',
-                    html: `<div style="background:${color};border:3px solid white;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;box-shadow:0 4px 14px rgba(0,0,0,.4)">${isLive ? '🚌' : '🚍'}</div>`,
+                    html: `<div style="background:${color};border:3px solid white;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;box-shadow:0 4px 14px rgba(0,0,0,.4)">🚌</div>`,
                     iconSize: [36, 36], iconAnchor: [18, 18]
                 });
                 if (!markers[id]) {
@@ -858,10 +1292,12 @@
         }
 
         function updateCounts() {
-            const total = Object.keys(allBuses).length;
+            // Live = currently active buses sending GPS now
             const live = Object.values(allBuses).filter(b => b.active && b.location && (Date.now() - b.location.timestamp) < 5 * 60 * 1000).length;
+            // Total = registered bus profiles (unique buses, not repeated sessions)
+            const totalProfiles = Object.keys(allProfiles).length;
             document.getElementById('live-count').textContent = live;
-            document.getElementById('total-count').textContent = total;
+            document.getElementById('total-count').textContent = totalProfiles;
         }
 
         function refreshBuses() { if (db) db.ref('buses').once('value', snap => { allBuses = snap.val() || {}; renderSidebar(); updateMapMarkers(); updateCounts(); }); }

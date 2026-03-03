@@ -1273,6 +1273,47 @@ body {
   color: var(--red);
 }
 
+/* Refresh Map Button */
+.refresh-map-btn {
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: 1.5px solid var(--border);
+  background: var(--bg);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all .25s ease;
+  padding: 0;
+}
+
+.refresh-map-btn:hover {
+  border-color: var(--primary);
+  background: var(--primary-bg);
+  transform: rotate(90deg);
+}
+
+.refresh-map-btn:active {
+  transform: scale(0.9) rotate(180deg);
+}
+
+.refresh-map-btn.spinning {
+  animation: spinRefresh 1s ease-in-out;
+  pointer-events: none;
+}
+
+@keyframes spinRefresh {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
 /* Miss-Stop Alert Button */
 .miss-stop-btn {
   padding: 7px 12px;
