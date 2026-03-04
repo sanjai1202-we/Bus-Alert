@@ -219,19 +219,18 @@ function loadLocal() {
 
 // ─── FIREBASE ────────────────────────────────────────────────────
 function loadFbSdk(cb) {
-  if (window.firebase) { cb(); return; }
-  const srcs = [
-    'https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js',
-    'https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js',
-  ];
-  let n = 0;
-  srcs.forEach(src => {
-    const t = document.createElement('script');
-    t.src = src;
-    t.onload = () => { if (++n === srcs.length) cb(); };
-    t.onerror = () => showToast('❌ Could not load Firebase SDK.');
-    document.head.appendChild(t);
-  });
+  if (window.firebase && window.firebase.database) { cb(); return; }
+  const s1 = document.createElement('script');
+  s1.src = 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js';
+  s1.onload = () => {
+    const s2 = document.createElement('script');
+    s2.src = 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js';
+    s2.onload = cb;
+    s2.onerror = () => showToast('❌ Could not load Firebase Database SDK.');
+    document.head.appendChild(s2);
+  };
+  s1.onerror = () => showToast('❌ Could not load Firebase App SDK.');
+  document.head.appendChild(s1);
 }
 
 function connectFb(cfg) {
