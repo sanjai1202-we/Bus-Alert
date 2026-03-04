@@ -481,6 +481,9 @@ function _doStartTracking(busId) {
     try { S.map.remove(); } catch (e) { }
     S.map = null; S.busMarker = null; S.stopMarker = null; S.stopCircle = null;
   }
+  // Always reset trail for a clean new session
+  clearTrail();
+  if (_animFrame) { cancelAnimationFrame(_animFrame); _animFrame = null; }
 
   setTimeout(() => {
     initMap();
@@ -1069,7 +1072,6 @@ function stopSleep() {
 
 function onSleepPos(pos) {
   if (!S.sleepOn) return;
-  S.geoWatchRetries = 0; // reset retry counter on success
   const { latitude: lat, longitude: lon } = pos.coords;
   const radius = parseFloat(q('#sleep-radius').value);
   const dist = getDistance(lat, lon, S.home.lat, S.home.lon);
