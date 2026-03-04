@@ -1853,3 +1853,66 @@ body {
     max-width: 100%;
   }
 }
+
+/* ================================================================
+   LIVE BUS MARKER  (road-following, directional SVG)
+   ================================================================ */
+
+/* Wrapper rotated by JS bearing — GPU-composited for smooth animation */
+.bus-marker-wrap {
+  display: block;
+  width: 40px;
+  height: 64px;
+  will-change: transform;
+  pointer-events: none;
+  /* let map clicks pass through */
+  /* Crisp drop-shadow so the bus stands out over any tile colour */
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, .45));
+  transition: filter .2s;
+}
+
+/* Live "ping" ring around the bus — signals an active GPS update */
+.bus-marker-wrap::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 56px;
+  height: 56px;
+  margin: -28px 0 0 -28px;
+  border-radius: 50%;
+  border: 2.5px solid rgba(59, 130, 246, .7);
+  animation: busPing 2.4s ease-out infinite;
+  pointer-events: none;
+}
+
+@keyframes busPing {
+  0% {
+    transform: scale(.5);
+    opacity: 1;
+  }
+
+  70% {
+    transform: scale(1.8);
+    opacity: 0;
+  }
+
+  100% {
+    transform: scale(1.8);
+    opacity: 0;
+  }
+}
+
+/* Leaflet marker anchor override so the SVG is centred correctly */
+.leaflet-marker-icon.leaflet-zoom-animated {
+  /* prevent Leaflet adding its own transition that fights ours */
+  transition: none !important;
+}
+
+/* Stop marker (home emoji) — unchanged size tweak */
+.stop-marker-icon {
+  font-size: 26px;
+  line-height: 30px;
+  text-align: center;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, .35));
+}

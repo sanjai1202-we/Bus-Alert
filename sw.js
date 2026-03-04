@@ -1,9 +1,9 @@
 /* =============================================
-   BusAlert — Service Worker v5
+   BusAlert — Service Worker v6
    Enables: App install + Offline support + iOS notifications
    ============================================= */
 
-const CACHE = 'busAlert-v5';
+const CACHE = 'busAlert-v6';
 const FILES = [
     '/',
     '/index.html',

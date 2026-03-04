@@ -42,38 +42,840 @@
             color: var(--text);
         }
 
-        /* ── Login Screen ── */
+        /* ══════════════════════════════════════════
+           PREMIUM ANIMATED LOGIN UI
+        ══════════════════════════════════════════ */
+
         #login-screen {
             position: fixed;
             inset: 0;
-            background: linear-gradient(160deg, #0f172a, #1e1b4b);
             display: flex;
             align-items: center;
             justify-content: center;
             z-index: 9999;
+            overflow: hidden;
+            background: #060818;
         }
 
-        .login-box {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 20px;
-            padding: 36px 28px;
-            width: 100%;
-            max-width: 360px;
-            box-shadow: 0 25px 60px rgba(0, 0, 0, .5);
-            animation: fadeUp .5s ease;
+        /* ── Animated mesh gradient background ── */
+        .login-bg {
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 80% 80% at 20% 20%, rgba(99, 102, 241, .35) 0%, transparent 60%),
+                radial-gradient(ellipse 60% 60% at 80% 80%, rgba(139, 92, 246, .3) 0%, transparent 60%),
+                radial-gradient(ellipse 70% 70% at 50% 0%, rgba(59, 130, 246, .2) 0%, transparent 60%),
+                linear-gradient(135deg, #060818 0%, #0f0c29 50%, #302b63 100%);
+            animation: bgPulse 8s ease-in-out infinite alternate;
         }
 
-        @keyframes fadeUp {
-            from {
+        @keyframes bgPulse {
+            0% {
+                filter: hue-rotate(0deg) brightness(1);
+            }
+
+            50% {
+                filter: hue-rotate(15deg) brightness(1.08);
+            }
+
+            100% {
+                filter: hue-rotate(-10deg) brightness(1);
+            }
+        }
+
+        /* ── Large glowing orbs ── */
+        .orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(60px);
+            opacity: .55;
+            animation: orbFloat 6s ease-in-out infinite alternate;
+        }
+
+        .orb1 {
+            width: 420px;
+            height: 420px;
+            background: #6366f1;
+            top: -80px;
+            left: -100px;
+            animation-delay: 0s;
+        }
+
+        .orb2 {
+            width: 360px;
+            height: 360px;
+            background: #8b5cf6;
+            bottom: -60px;
+            right: -80px;
+            animation-delay: -2s;
+        }
+
+        .orb3 {
+            width: 280px;
+            height: 280px;
+            background: #3b82f6;
+            top: 50%;
+            left: 55%;
+            transform: translate(-50%, -50%);
+            animation-delay: -4s;
+        }
+
+        @keyframes orbFloat {
+            0% {
+                transform: translate(0, 0) scale(1);
+            }
+
+            33% {
+                transform: translate(30px, -20px) scale(1.05);
+            }
+
+            66% {
+                transform: translate(-20px, 30px) scale(.95);
+            }
+
+            100% {
+                transform: translate(10px, 10px) scale(1.02);
+            }
+        }
+
+        .orb2 {
+            animation-name: orbFloat2;
+        }
+
+        @keyframes orbFloat2 {
+            0% {
+                transform: translate(0, 0);
+            }
+
+            50% {
+                transform: translate(-35px, -25px);
+            }
+
+            100% {
+                transform: translate(20px, -10px);
+            }
+        }
+
+        .orb3 {
+            animation-name: orbFloat3;
+        }
+
+        @keyframes orbFloat3 {
+            0% {
+                transform: translate(-50%, -50%) scale(1);
+            }
+
+            50% {
+                transform: translate(calc(-50% + 20px), calc(-50% - 30px)) scale(1.1);
+            }
+
+            100% {
+                transform: translate(calc(-50% - 10px), calc(-50% + 10px)) scale(.9);
+            }
+        }
+
+        /* ── Floating particles ── */
+        .particles {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            overflow: hidden;
+        }
+
+        .particle {
+            position: absolute;
+            bottom: -20px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, .15);
+            animation: particleRise linear infinite;
+        }
+
+        @keyframes particleRise {
+            0% {
+                transform: translateY(0) translateX(0);
                 opacity: 0;
-                transform: translateY(20px)
+            }
+
+            10% {
+                opacity: 1;
+            }
+
+            90% {
+                opacity: .4;
+            }
+
+            100% {
+                transform: translateY(-110vh) translateX(40px);
+                opacity: 0;
+            }
+        }
+
+        /* ── Login Card ── */
+        .login-box {
+            position: relative;
+            z-index: 10;
+            width: 380px;
+            padding: 48px 36px 40px;
+            background: rgba(255, 255, 255, .04);
+            border: 1px solid rgba(255, 255, 255, .12);
+            border-radius: 28px;
+            box-shadow:
+                0 8px 32px rgba(0, 0, 0, .5),
+                0 0 0 1px rgba(99, 102, 241, .2),
+                inset 0 1px 0 rgba(255, 255, 255, .1);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            animation: cardAppear .9s cubic-bezier(.34, 1.4, .64, 1) both;
+        }
+
+        @keyframes cardAppear {
+            0% {
+                opacity: 0;
+                transform: scale(.7) translateY(40px);
+            }
+
+            100% {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        /* Animated border glow */
+        .login-box::before {
+            content: '';
+            position: absolute;
+            inset: -1px;
+            border-radius: 28px;
+            background: linear-gradient(135deg, rgba(99, 102, 241, .5), rgba(139, 92, 246, .3), rgba(59, 130, 246, .4), rgba(99, 102, 241, .5));
+            background-size: 300% 300%;
+            animation: borderGlow 4s ease-in-out infinite;
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            padding: 1px;
+            z-index: -1;
+        }
+
+        @keyframes borderGlow {
+
+            0%,
+            100% {
+                background-position: 0% 50%;
+            }
+
+            50% {
+                background-position: 100% 50%;
+            }
+        }
+
+        /* Logo + Title */
+        .login-logo {
+            font-size: 3.2rem;
+            text-align: center;
+            margin-bottom: 8px;
+            animation: logoBounce 1s cubic-bezier(.34, 1.6, .64, 1) .5s both;
+            filter: drop-shadow(0 0 20px rgba(99, 102, 241, .8));
+        }
+
+        @keyframes logoBounce {
+            0% {
+                transform: scale(0) rotate(-20deg);
+                opacity: 0;
+            }
+
+            100% {
+                transform: scale(1) rotate(0deg);
+                opacity: 1;
+            }
+        }
+
+        .login-title {
+            font-size: 1.65rem;
+            font-weight: 800;
+            text-align: center;
+            margin-bottom: 6px;
+            background: linear-gradient(135deg, #e0e7ff, #c4b5fd, #a5f3fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -.5px;
+        }
+
+        .login-sub {
+            font-size: .78rem;
+            color: rgba(148, 163, 184, .7);
+            text-align: center;
+            margin-bottom: 32px;
+            letter-spacing: .2px;
+        }
+
+        /* ── Floating Label Inputs ── */
+        .input-group {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .input-group label {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: .9rem;
+            color: rgba(148, 163, 184, .6);
+            pointer-events: none;
+            transition: all .25s cubic-bezier(.4, 0, .2, 1);
+            background: transparent;
+            padding: 0 4px;
+        }
+
+        .input-group input:focus~label,
+        .input-group input:not(:placeholder-shown)~label {
+            top: 0;
+            font-size: .72rem;
+            color: #818cf8;
+            background: linear-gradient(to bottom, rgba(6, 8, 24, .8), rgba(30, 27, 75, .6));
+            border-radius: 4px;
+        }
+
+        .login-field {
+            width: 100%;
+            padding: 15px 16px 13px;
+            background: rgba(255, 255, 255, .05);
+            border: 1.5px solid rgba(255, 255, 255, .1);
+            border-radius: 14px;
+            color: #f1f5f9;
+            font-family: var(--font);
+            font-size: .95rem;
+            outline: none;
+            transition: border-color .25s, box-shadow .25s, background .25s;
+            display: block;
+        }
+
+        .login-field::placeholder {
+            color: transparent;
+        }
+
+        .login-field:focus {
+            border-color: rgba(99, 102, 241, .7);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, .15), 0 0 20px rgba(99, 102, 241, .1);
+            background: rgba(99, 102, 241, .06);
+        }
+
+        /* Icon inside field */
+        .input-icon {
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 1rem;
+            opacity: .4;
+            pointer-events: none;
+            transition: opacity .2s;
+        }
+
+        .input-group:focus-within .input-icon {
+            opacity: .9;
+        }
+
+        /* ── Sign In Button ── */
+        .login-btn {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 14px;
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #6366f1 100%);
+            background-size: 200% 200%;
+            color: white;
+            font-family: var(--font);
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            letter-spacing: .3px;
+            position: relative;
+            overflow: hidden;
+            transition: transform .2s, box-shadow .2s;
+            box-shadow: 0 4px 24px rgba(99, 102, 241, .5);
+            animation: btnGradient 3s ease-in-out infinite;
+            margin-bottom: 6px;
+        }
+
+        @keyframes btnGradient {
+
+            0%,
+            100% {
+                background-position: 0% 50%;
+            }
+
+            50% {
+                background-position: 100% 50%;
+            }
+        }
+
+        /* Shimmer sweep */
+        .login-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 60%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .25), transparent);
+            animation: shimmer 2.5s ease-in-out infinite;
+        }
+
+        @keyframes shimmer {
+            0% {
+                left: -100%;
+            }
+
+            100% {
+                left: 200%;
+            }
+        }
+
+        .login-btn:hover {
+            transform: translateY(-2px) scale(1.01);
+            box-shadow: 0 8px 32px rgba(99, 102, 241, .65);
+        }
+
+        .login-btn:active {
+            transform: translateY(0) scale(.98);
+        }
+
+        /* Ripple on click */
+        .ripple {
+            position: absolute;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            background: rgba(255, 255, 255, .4);
+            transform: scale(0);
+            animation: rippleAnim .6s linear;
+            pointer-events: none;
+        }
+
+        @keyframes rippleAnim {
+            to {
+                transform: scale(20);
+                opacity: 0;
+            }
+        }
+
+        .login-err {
+            color: #f87171;
+            font-size: .8rem;
+            text-align: center;
+            min-height: 18px;
+            margin-top: 6px;
+            animation: errShake .4s ease;
+        }
+
+        @keyframes errShake {
+
+            0%,
+            100% {
+                transform: translateX(0);
+            }
+
+            25% {
+                transform: translateX(-6px);
+            }
+
+            75% {
+                transform: translateX(6px);
+            }
+        }
+
+        /* login-field-wrap kept for compatibility */
+        .login-field-wrap {
+            display: none;
+        }
+
+        /* ── Admin Shell ── */
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        overflow: hidden;
+        }
+
+        .star {
+            position: absolute;
+            border-radius: 50%;
+            background: white;
+            animation: twinkle 3s ease-in-out infinite alternate;
+        }
+
+        @keyframes twinkle {
+            from {
+                opacity: .2;
+                transform: scale(1);
             }
 
             to {
-                opacity: 1;
-                transform: translateY(0)
+                opacity: .9;
+                transform: scale(1.4);
             }
+        }
+
+        /* Ground line */
+        .login-ground {
+            position: absolute;
+            bottom: calc(50% - 160px);
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #6366f1 30%, #a78bfa 70%, transparent);
+            opacity: .35;
+        }
+
+        /* ── Login Card ── */
+        .login-box {
+            position: relative;
+            background: rgba(30, 41, 59, .95);
+            border: 1px solid rgba(99, 102, 241, .4);
+            border-radius: 24px;
+            padding: 40px 32px;
+            width: 340px;
+            box-shadow: 0 30px 80px rgba(0, 0, 0, .6), 0 0 60px rgba(99, 102, 241, .15);
+            /* Starts off screen right, dragged in by character */
+            transform: translateX(140vw);
+            opacity: 0;
+            z-index: 10;
+            backdrop-filter: blur(12px);
+        }
+
+        .login-box.anim-enter {
+            animation: cardEnter 1.2s cubic-bezier(.22, 1, .36, 1) forwards;
+        }
+
+        .login-box.anim-settle {
+            animation: cardSettle .35s ease forwards;
+        }
+
+        @keyframes cardEnter {
+            0% {
+                transform: translateX(140vw);
+                opacity: 0;
+            }
+
+            10% {
+                opacity: 1;
+            }
+
+            100% {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes cardSettle {
+            0% {
+                transform: translateX(0) rotate(0deg);
+            }
+
+            30% {
+                transform: translateX(-6px) rotate(-1deg);
+            }
+
+            60% {
+                transform: translateX(4px) rotate(.5deg);
+            }
+
+            100% {
+                transform: translateX(0) rotate(0deg);
+            }
+        }
+
+        /* Rope / pull line */
+        #pull-rope {
+            position: absolute;
+            top: 50%;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, #f59e0b, #fbbf24);
+            border-radius: 2px;
+            transform-origin: left center;
+            display: none;
+            z-index: 8;
+            box-shadow: 0 0 6px rgba(251, 191, 36, .5);
+        }
+
+        /* ── Stick-figure Character ── */
+        #admin-guy {
+            position: absolute;
+            bottom: calc(50% - 155px);
+            left: -100px;
+            width: 60px;
+            height: 100px;
+            z-index: 11;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            /* Phase 1: walk in from left */
+            animation: guyWalkIn 1.4s cubic-bezier(.4, 0, .2, 1) forwards;
+        }
+
+        @keyframes guyWalkIn {
+            0% {
+                left: -100px;
+            }
+
+            100% {
+                left: calc(50% - 230px);
+            }
+        }
+
+        #admin-guy.phase-pull {
+            animation: guyPull 1.2s cubic-bezier(.22, 1, .36, 1) forwards;
+        }
+
+        @keyframes guyPull {
+            0% {
+                left: calc(50% - 230px);
+            }
+
+            100% {
+                left: calc(50% - 190px);
+            }
+        }
+
+        #admin-guy.phase-salute {
+            animation: none;
+            left: calc(50% - 190px);
+        }
+
+        #admin-guy.phase-walkout {
+            animation: guyWalkOut 1s ease-in forwards;
+        }
+
+        @keyframes guyWalkOut {
+            0% {
+                left: calc(50% - 190px);
+                opacity: 1;
+            }
+
+            80% {
+                opacity: 1;
+            }
+
+            100% {
+                left: 110vw;
+                opacity: 0;
+            }
+        }
+
+        /* ── Guy Body Parts ── */
+        .guy-head {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #fbbf24;
+            border: 3px solid #f59e0b;
+            box-shadow: 0 0 12px rgba(251, 191, 36, .4);
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        /* Face */
+        .guy-head::before {
+            content: '';
+            position: absolute;
+            top: 8px;
+            left: 50%;
+            width: 10px;
+            height: 2px;
+            background: #92400e;
+            transform: translateX(-50%);
+            border-radius: 2px;
+        }
+
+        /* Eyes */
+        .guy-head::after {
+            content: '';
+            position: absolute;
+            top: 5px;
+            left: 4px;
+            width: 4px;
+            height: 4px;
+            background: #92400e;
+            border-radius: 50%;
+            box-shadow: 8px 0 0 #92400e;
+        }
+
+        .guy-cap {
+            position: absolute;
+            top: -6px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 28px;
+            height: 10px;
+            background: #6366f1;
+            border-radius: 6px 6px 0 0;
+        }
+
+        .guy-cap::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: -3px;
+            right: -3px;
+            height: 4px;
+            background: #818cf8;
+            border-radius: 2px;
+        }
+
+        .guy-body {
+            width: 20px;
+            height: 34px;
+            background: #6366f1;
+            border-radius: 4px;
+            margin-top: 2px;
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        /* Belt */
+        .guy-body::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: #4338ca;
+            transform: translateY(-50%);
+        }
+
+        .guy-arms {
+            position: absolute;
+            top: 40px;
+            width: 60px;
+            height: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .guy-arm {
+            width: 20px;
+            height: 6px;
+            background: #6366f1;
+            border-radius: 3px;
+            transform-origin: left center;
+            transition: transform .3s ease;
+        }
+
+        .guy-arm.right {
+            transform-origin: right center;
+        }
+
+        /* Walking arms */
+        #admin-guy .guy-arm.left {
+            animation: armSwingL 0.5s ease-in-out infinite alternate;
+        }
+
+        #admin-guy .guy-arm.right {
+            animation: armSwingR 0.5s ease-in-out infinite alternate;
+        }
+
+        @keyframes armSwingL {
+            from {
+                transform: rotate(-30deg);
+            }
+
+            to {
+                transform: rotate(30deg);
+            }
+        }
+
+        @keyframes armSwingR {
+            from {
+                transform: rotate(30deg);
+            }
+
+            to {
+                transform: rotate(-30deg);
+            }
+        }
+
+        /* Pull arm pose */
+        #admin-guy.phase-pull .guy-arm.left {
+            animation: none;
+            transform: rotate(45deg);
+        }
+
+        #admin-guy.phase-pull .guy-arm.right {
+            animation: none;
+            transform: rotate(-10deg);
+        }
+
+        /* Salute pose */
+        .guy-arm.salute {
+            animation: none !important;
+            transform: rotate(-80deg) !important;
+        }
+
+        .guy-legs {
+            display: flex;
+            gap: 4px;
+            margin-top: 2px;
+        }
+
+        .guy-leg {
+            width: 8px;
+            height: 26px;
+            background: #1e3a5f;
+            border-radius: 4px;
+            transform-origin: top center;
+        }
+
+        .guy-leg.left {
+            animation: legSwingL .5s ease-in-out infinite alternate;
+        }
+
+        .guy-leg.right {
+            animation: legSwingR .5s ease-in-out infinite alternate;
+        }
+
+        @keyframes legSwingL {
+            from {
+                transform: rotate(-20deg);
+            }
+
+            to {
+                transform: rotate(20deg);
+            }
+        }
+
+        @keyframes legSwingR {
+            from {
+                transform: rotate(20deg);
+            }
+
+            to {
+                transform: rotate(-20deg);
+            }
+        }
+
+        /* Stop legs when saluting */
+        #admin-guy.phase-salute .guy-leg.left,
+        #admin-guy.phase-salute .guy-leg.right {
+            animation: none;
+            transform: rotate(0deg);
+        }
+
+        /* Emoji salute badge */
+        .guy-salute-badge {
+            position: absolute;
+            top: -36px;
+            left: 50%;
+            transform: translateX(-50%) scale(0);
+            font-size: 1.4rem;
+            transition: transform .3s cubic-bezier(.34, 1.56, .64, 1);
+            white-space: nowrap;
+        }
+
+        .guy-salute-badge.show {
+            transform: translateX(-50%) scale(1);
         }
 
         .login-logo {
@@ -129,18 +931,19 @@
             padding: 14px;
             border: none;
             border-radius: 10px;
-            background: var(--primary);
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
             color: white;
             font-family: var(--font);
             font-size: .97rem;
             font-weight: 700;
             cursor: pointer;
             transition: all .2s;
+            box-shadow: 0 4px 20px rgba(99, 102, 241, .4);
         }
 
         .login-btn:hover {
-            background: #4f46e5;
-            transform: translateY(-1px);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 28px rgba(99, 102, 241, .5);
         }
 
         .login-err {
@@ -782,9 +1585,99 @@
 
 <body>
 
-    <!-- LOGIN -->
+    <!-- LOGIN — Premium Animated UI -->
     <div id="login-screen">
+        <div class="login-bg"></div>
+        <div class="orb orb1"></div>
+        <div class="orb orb2"></div>
+        <div class="orb orb3"></div>
+        <div class="particles" id="particles"></div>
+
         <div class="login-box">
+            <div class="login-logo">🔐</div>
+            <div class="login-title">Admin Access</div>
+            <div class="login-sub">BusAlert Fleet Monitor · Authorized personnel only</div>
+
+            <div class="input-group">
+                <input class="login-field" type="text" id="adm-user" placeholder="Username" autocomplete="off"
+                    onkeydown="if(event.key==='Enter')document.getElementById('adm-pass').focus()" />
+                <label for="adm-user">👤 Username</label>
+                <span class="input-icon">👤</span>
+            </div>
+            <div class="input-group">
+                <input class="login-field" type="password" id="adm-pass" placeholder="Password" autocomplete="off"
+                    onkeydown="if(event.key==='Enter')doLogin()" />
+                <label for="adm-pass">🔑 Password</label>
+                <span class="input-icon">🔒</span>
+            </div>
+
+            <!-- Hidden compat fields -->
+            <div class="login-field-wrap"></div>
+
+            <button class="login-btn" id="login-btn" onclick="doLoginAnimated(event)">✨ Sign In</button>
+            <div class="login-err" id="login-err"></div>
+        </div>
+    </div>
+
+    <script>
+        // ── Floating particles ──
+        (function () {
+            const c = document.getElementById('particles');
+            for (let i = 0; i < 25; i++) {
+                const p = document.createElement('div');
+                p.className = 'particle';
+                const sz = Math.random() * 6 + 3;
+                p.style.cssText = `
+                    width:${sz}px;height:${sz}px;
+                    left:${Math.random() * 100}%;
+                    animation-duration:${6 + Math.random() * 10}s;
+                    animation-delay:${Math.random() * 8}s;
+                    opacity:${Math.random() * .3 + .05};
+                `;
+                c.appendChild(p);
+            }
+        })();
+
+        // ── Ripple button effect ──
+        function doLoginAnimated(e) {
+            const btn = document.getElementById('login-btn');
+            const r = document.createElement('span');
+            r.className = 'ripple';
+            const rect = btn.getBoundingClientRect();
+            r.style.left = (e.clientX - rect.left - 10) + 'px';
+            r.style.top = (e.clientY - rect.top - 10) + 'px';
+            btn.appendChild(r);
+            setTimeout(() => r.remove(), 700);
+            doLogin();
+        }
+    </script>
+    <div id="login-screen">
+        <!-- Stars background -->
+        <div class="login-stars" id="login-stars"></div>
+        <!-- Ground glow line -->
+        <div class="login-ground"></div>
+        <!-- Pull rope (shown during character drag) -->
+        <div id="pull-rope"></div>
+
+        <!-- Stick-figure character -->
+        <div id="admin-guy">
+            <div class="guy-head">
+                <div class="guy-cap"></div>
+                <div class="guy-salute-badge" id="salute-badge">🫡</div>
+            </div>
+            <div class="guy-body"></div>
+            <div class="guy-arms">
+                <div class="guy-arm left" id="arm-left"></div>
+                <div class="guy-arm right" id="arm-right"></div>
+            </div>
+            <div class="guy-legs">
+                <div class="guy-leg left"></div>
+                <div class="guy-leg right"></div>
+            </div>
+        </div>
+
+        <!-- Login card (dragged in by character) -->
+        <div class="login-box" id="login-box">
             <div class="login-logo">🔐</div>
             <div class="login-title">Admin Access</div>
             <div class="login-sub">BusAlert Fleet Monitor — Authorized personnel only</div>
@@ -797,6 +1690,105 @@
             <div class="login-err" id="login-err"></div>
         </div>
     </div>
+
+    <script>
+        // ═══════════════════════════════════════════
+        //  LOGIN ANIMATION SEQUENCE
+        // ═══════════════════════════════════════════
+        (function () {
+            // Generate random stars
+            const starsEl = document.getElementById('login-stars');
+            for (let i = 0; i < 60; i++) {
+                const s = document.createElement('div');
+                s.className = 'star';
+                const size = Math.random() * 2.5 + 0.5;
+                s.style.cssText = `
+                    width:${size}px; height:${size}px;
+                    top:${Math.random() * 100}%; left:${Math.random() * 100}%;
+                    animation-delay:${Math.random() * 3}s;
+                    animation-duration:${2 + Math.random() * 2}s;
+                `;
+                starsEl.appendChild(s);
+            }
+
+            const guy = document.getElementById('admin-guy');
+            const card = document.getElementById('login-box');
+            const rope = document.getElementById('pull-rope');
+            const badge = document.getElementById('salute-badge');
+            const armL = document.getElementById('arm-left');
+            const armR = document.getElementById('arm-right');
+
+            /* ── Phase 1: Character walks in (CSS anim already started) ── */
+            // After character reaches position, show rope + pull card
+            setTimeout(() => {
+                /* ── Phase 2: Show rope + begin pulling card ── */
+                rope.style.display = 'block';
+                rope.style.left = '0';
+                rope.style.width = '140vw';
+
+                guy.classList.add('phase-pull');
+                card.classList.add('anim-enter');
+
+                // Animate rope shrinking as card comes in
+                let ropeW = 140;
+                const ropeInterval = setInterval(() => {
+                    ropeW = Math.max(0, ropeW - 8);
+                    rope.style.width = ropeW + 'vw';
+                    if (ropeW <= 0) {
+                        clearInterval(ropeInterval);
+                        rope.style.display = 'none';
+                    }
+                }, 30);
+
+            }, 1400); // after walk-in (~1.4s)
+
+            setTimeout(() => {
+                /* ── Phase 3: Card settles + bounces ── */
+                card.classList.remove('anim-enter');
+                card.classList.add('anim-settle');
+                // Make card stay centered
+                card.style.transform = 'translateX(0)';
+                card.style.opacity = '1';
+
+            }, 2700);
+
+            setTimeout(() => {
+                /* ── Phase 4: SALUTE! ── */
+                guy.className = 'phase-salute';
+                guy.id = 'admin-guy';
+                guy.setAttribute('style',
+                    `position:absolute;bottom:calc(50% - 155px);left:calc(50% - 190px);
+                     width:60px;height:100px;z-index:11;display:flex;
+                     flex-direction:column;align-items:center;`
+                );
+                // Raise right arm for salute
+                armR.classList.add('salute');
+                // Show salute badge
+                badge.classList.add('show');
+
+            }, 3200);
+
+            setTimeout(() => {
+                /* ── Phase 5: Walk off screen ── */
+                badge.classList.remove('show');
+                armR.classList.remove('salute');
+                guy.setAttribute('style',
+                    `position:absolute;bottom:calc(50% - 155px);left:calc(50% - 190px);
+                     width:60px;height:100px;z-index:11;display:flex;
+                     flex-direction:column;align-items:center;
+                     animation:guyWalkOut 1s ease-in forwards;`
+                );
+
+            }, 4400);
+
+            setTimeout(() => {
+                /* ── Phase 6: Guy gone, focus login ── */
+                guy.style.display = 'none';
+                document.getElementById('adm-user').focus();
+            }, 5500);
+        })();
+    </script>
+
 
     <!-- ADMIN SHELL -->
     <div id="admin-shell" style="display:none">

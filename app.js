@@ -33,6 +33,11 @@ const S = {
   busLatLng: null,
   prevLatLng: null,
 
+  // Road-following tracker
+  busHeading: 0,          // current compass bearing (degrees)
+  busTrailCoords: [],     // array of L.LatLng for the live trail
+  busTrailLine: null,     // Leaflet polyline drawn on the map
+
   // Miss-stop
   myStudentName: '',
 };
@@ -255,6 +260,7 @@ function _handleBusUpdate() {
   if (S.trackOn && S.trackedId && S.allBuses[S.trackedId]?.location) {
     const loc = S.allBuses[S.trackedId].location;
     if (loc.lat && loc.lon) {
+      // moveBusOnMap handles the case where S.map isn't ready yet (queues via setTimeout)
       moveBusOnMap(loc.lat, loc.lon);
       updateTrackInfo(loc);
     }
@@ -268,7 +274,8 @@ function _handleBusUpdate() {
     } else if (b.location) {
       const age = Date.now() - (b.location.timestamp || 0);
       if (age > 5 * 60 * 1000) {
-        q('#map-status-hint').textContent = '⚠️ Bus GPS signal lost (5+ min old)';
+        const hint = q('#map-status-hint');
+        if (hint) hint.textContent = '⚠️ Bus GPS signal lost (5+ min old)';
       }
     }
   }
@@ -489,7 +496,7 @@ function _doStartTracking(busId) {
   }, 200);
 }
 
-// Poll Firebase every 2s for the tracked bus location (backup)
+// Poll Firebase every 3s for the tracked bus location (backup to real-time listener)
 function startBusPoller(busId) {
   stopBusPoller();
   _busPoller = setInterval(() => {
@@ -497,15 +504,14 @@ function startBusPoller(busId) {
     S.db.ref(`buses/${S.trackedId}/location`).once('value', snap => {
       const loc = snap.val();
       if (loc && loc.lat && loc.lon) {
-        // Update allBuses cache
-        if (S.allBuses[S.trackedId]) {
-          S.allBuses[S.trackedId].location = loc;
-        }
+        // Keep allBuses cache in sync
+        if (!S.allBuses[S.trackedId]) S.allBuses[S.trackedId] = {};
+        S.allBuses[S.trackedId].location = loc;
         moveBusOnMap(loc.lat, loc.lon);
         updateTrackInfo(loc);
       }
     });
-  }, 2000);  // Poll every 2 seconds
+  }, 3000);  // Poll every 3 seconds
 }
 
 function stopBusPoller() {
@@ -551,7 +557,10 @@ function stopTrackingInner(silent) {
   S.trackedId = null;
   S.trackAlerted = false;
   S.alertedBusPos = null;
+  S.busHeading = 0;
   stopBusPoller();
+  // Cancel any in-flight road animation
+  if (_animFrame) { cancelAnimationFrame(_animFrame); _animFrame = null; }
   if (!silent) setStatus('Idle', false);
   q('#track-alert-banner')?.classList.add('hidden');
 }
@@ -569,15 +578,67 @@ function initMap() {
   setTimeout(() => S.map && S.map.invalidateSize(), 200);
   setTimeout(() => S.map && S.map.invalidateSize(), 500);
   setTimeout(() => S.map && S.map.invalidateSize(), 1000);
+
+  // After map is ready, immediately place bus if we have a cached location
+  setTimeout(() => {
+    if (S.trackOn && S.trackedId && S.allBuses[S.trackedId]?.location) {
+      const loc = S.allBuses[S.trackedId].location;
+      if (loc.lat && loc.lon) {
+        moveBusOnMap(loc.lat, loc.lon);
+        updateTrackInfo(loc);
+      }
+    }
+  }, 300);
 }
 
-function busIcon() {
+// Re-sync bus position when app returns from background (e.g. screen off → on)
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && S.trackOn && S.trackedId && S.db) {
+    S.db.ref(`buses/${S.trackedId}/location`).once('value', snap => {
+      const loc = snap.val();
+      if (loc && loc.lat && loc.lon) {
+        if (!S.allBuses[S.trackedId]) S.allBuses[S.trackedId] = {};
+        S.allBuses[S.trackedId].location = loc;
+        moveBusOnMap(loc.lat, loc.lon);
+        updateTrackInfo(loc);
+      }
+    });
+  }
+});
+
+function busIcon(heading) {
+  const deg = (heading || 0);
+  // Top-down directional SVG bus — points NORTH (up) at 0deg, rotates with bearing
+  const svg = `<svg viewBox="0 0 40 64" width="40" height="64" xmlns="http://www.w3.org/2000/svg">
+    <!-- Body -->
+    <rect x="3" y="10" width="34" height="50" rx="7" fill="#1d4ed8"/>
+    <!-- Front bumper / direction arrow -->
+    <polygon points="20,1 34,13 6,13" fill="#facc15" stroke="#b45309" stroke-width="1"/>
+    <!-- Windshield -->
+    <rect x="8" y="14" width="24" height="11" rx="3" fill="#bfdbfe" opacity="0.9"/>
+    <!-- Windows row 1 -->
+    <rect x="6" y="30" width="12" height="8" rx="2" fill="#bfdbfe" opacity="0.85"/>
+    <rect x="22" y="30" width="12" height="8" rx="2" fill="#bfdbfe" opacity="0.85"/>
+    <!-- Windows row 2 -->
+    <rect x="6" y="42" width="12" height="8" rx="2" fill="#bfdbfe" opacity="0.85"/>
+    <rect x="22" y="42" width="12" height="8" rx="2" fill="#bfdbfe" opacity="0.85"/>
+    <!-- Wheels -->
+    <rect x="0" y="16" width="5" height="10" rx="2.5" fill="#1f2937"/>
+    <rect x="35" y="16" width="5" height="10" rx="2.5" fill="#1f2937"/>
+    <rect x="0" y="42" width="5" height="10" rx="2.5" fill="#1f2937"/>
+    <rect x="35" y="42" width="5" height="10" rx="2.5" fill="#1f2937"/>
+    <!-- Tail lights -->
+    <rect x="5" y="58" width="10" height="4" rx="2" fill="#ef4444"/>
+    <rect x="25" y="58" width="10" height="4" rx="2" fill="#ef4444"/>
+  </svg>`;
   return L.divIcon({
     className: '',
-    html: `<div class="bus-marker-icon">🚌</div>`,
-    iconSize: [36, 36], iconAnchor: [18, 18],
+    html: `<div class="bus-marker-wrap" style="transform:rotate(${deg}deg);transform-origin:center center">${svg}</div>`,
+    iconSize: [40, 64],
+    iconAnchor: [20, 32],
   });
 }
+
 function stopIcon() {
   return L.divIcon({
     className: '',
@@ -586,51 +647,183 @@ function stopIcon() {
   });
 }
 
-function moveBusOnMap(lat, lon) {
-  if (!S.map) {
-    console.warn('moveBusOnMap: map not ready, queuing...');
-    setTimeout(() => moveBusOnMap(lat, lon), 500);
+// ─── BEARING CALCULATION ──────────────────────────────────────────
+// Returns compass bearing (0=North, 90=East, 180=South, 270=West)
+function calcBearing(lat1, lon1, lat2, lon2) {
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const φ1 = lat1 * Math.PI / 180;
+  const φ2 = lat2 * Math.PI / 180;
+  const y = Math.sin(dLon) * Math.cos(φ2);
+  const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(dLon);
+  return ((Math.atan2(y, x) * 180 / Math.PI) + 360) % 360;
+}
+
+// ─── OSRM ROAD PATH ──────────────────────────────────────────────
+// Fetches real road geometry between two points using the free OSRM API.
+// Returns array of L.LatLng following the actual road, or null on failure.
+async function getRoadPath(fromLat, fromLon, toLat, toLon) {
+  try {
+    const ctrl = new AbortController();
+    const timeout = setTimeout(() => ctrl.abort(), 5000);
+    const res = await fetch(
+      `https://router.project-osrm.org/route/v1/driving/${fromLon},${fromLat};${toLon},${toLat}?overview=full&geometries=geojson`,
+      { signal: ctrl.signal }
+    );
+    clearTimeout(timeout);
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.code === 'Ok' && data.routes?.[0]?.geometry?.coordinates?.length) {
+      // OSRM returns [lon, lat] — convert to L.LatLng
+      return data.routes[0].geometry.coordinates.map(([lon, lat]) => L.latLng(lat, lon));
+    }
+  } catch (e) {
+    console.warn('OSRM unavailable, falling back to direct line:', e.message);
+  }
+  return null; // caller will fall back to straight-line animation
+}
+
+// ─── TRAIL POLYLINE ───────────────────────────────────────────────
+function addToTrail(latlngs) {
+  if (!S.map || !latlngs || !latlngs.length) return;
+  S.busTrailCoords.push(...latlngs);
+  if (!S.busTrailLine) {
+    S.busTrailLine = L.polyline(S.busTrailCoords, {
+      color: '#3b82f6',
+      weight: 4,
+      opacity: 0.75,
+      dashArray: null,
+      lineJoin: 'round',
+      lineCap: 'round',
+    }).addTo(S.map);
+    S.busTrailLine.bringToBack();
+  } else {
+    S.busTrailLine.setLatLngs(S.busTrailCoords);
+  }
+}
+
+function clearTrail() {
+  if (S.busTrailLine && S.map) { try { S.map.removeLayer(S.busTrailLine); } catch (e) { } }
+  S.busTrailLine = null;
+  S.busTrailCoords = [];
+}
+
+// ─── WAYPOINT ANIMATION ───────────────────────────────────────────
+// Animates marker along multiple waypoints (road geometry from OSRM)
+let _animFrame = null;
+function animateAlongWaypoints(marker, waypoints, totalMs, finalHeading) {
+  if (_animFrame) cancelAnimationFrame(_animFrame);
+  if (!waypoints || waypoints.length < 2) {
+    if (waypoints?.length === 1) marker.setLatLng(waypoints[0]);
+    if (finalHeading != null) marker.setIcon(busIcon(finalHeading));
     return;
   }
+
+  // Pre-compute segment distances for proportional timing
+  const segDists = waypoints.slice(1).map((wp, i) => waypoints[i].distanceTo(wp));
+  const totalDist = segDists.reduce((a, b) => a + b, 0);
+
+  let segIdx = 0;
+  let segStart = null;
+
+  function runSeg(now) {
+    if (!segStart) segStart = now;
+    const from = waypoints[segIdx];
+    const to = waypoints[segIdx + 1];
+    const segMs = totalDist > 0 ? (segDists[segIdx] / totalDist) * totalMs : totalMs;
+    const t = Math.min((now - segStart) / segMs, 1);
+    const e = easeInOut(t);
+
+    const lat = from.lat + (to.lat - from.lat) * e;
+    const lon = from.lng + (to.lng - from.lng) * e;
+    marker.setLatLng([lat, lon]);
+
+    // Rotate icon to face direction of this segment
+    const segBearing = calcBearing(from.lat, from.lng, to.lat, to.lng);
+    marker.setIcon(busIcon(segBearing));
+
+    if (t < 1) {
+      _animFrame = requestAnimationFrame(runSeg);
+    } else {
+      segIdx++;
+      if (segIdx < waypoints.length - 1) {
+        segStart = now;
+        _animFrame = requestAnimationFrame(runSeg);
+      } else {
+        marker.setLatLng(waypoints[waypoints.length - 1]);
+        if (finalHeading != null) marker.setIcon(busIcon(finalHeading));
+        _animFrame = null;
+      }
+    }
+  }
+  _animFrame = requestAnimationFrame(runSeg);
+}
+
+// ─── MOVE BUS ON MAP (road-following) ────────────────────────────
+// Always store latest coords for deferred execution (map may not be ready)
+moveBusOnMap._pending = null;
+moveBusOnMap._lat = null;
+moveBusOnMap._lon = null;
+
+function moveBusOnMap(lat, lon) {
+  // Always cache the freshest coordinates
+  moveBusOnMap._lat = lat;
+  moveBusOnMap._lon = lon;
+
+  if (!S.map) {
+    // Map not ready yet — queue ONE retry that uses the latest coords at fire-time
+    if (!moveBusOnMap._pending) {
+      moveBusOnMap._pending = setTimeout(() => {
+        moveBusOnMap._pending = null;
+        if (moveBusOnMap._lat != null) moveBusOnMap(moveBusOnMap._lat, moveBusOnMap._lon);
+      }, 700);
+    }
+    return;
+  }
+  if (moveBusOnMap._pending) { clearTimeout(moveBusOnMap._pending); moveBusOnMap._pending = null; }
   if (!lat || !lon || isNaN(lat) || isNaN(lon)) return;
 
   const newLatLng = L.latLng(lat, lon);
 
   if (!S.busMarker) {
-    S.busMarker = L.marker([lat, lon], { icon: busIcon(), zIndexOffset: 100 }).addTo(S.map);
-    S.map.setView([lat, lon], 15, { animate: true });
-    console.log('🚌 Bus marker created at', lat, lon);
-  } else {
-    const prev = S.busMarker.getLatLng();
-    // Only animate if position actually changed
-    if (Math.abs(prev.lat - lat) > 0.000001 || Math.abs(prev.lng - lon) > 0.000001) {
-      animateMarker(S.busMarker, prev, newLatLng, 2000);
-    }
+    // ── First fix: place the marker and start the trail ──
+    S.busMarker = L.marker([lat, lon], { icon: busIcon(0), zIndexOffset: 200 }).addTo(S.map);
+    S.map.setView([lat, lon], 16, { animate: true });
+    S.busLatLng = newLatLng;
+    S.busTrailCoords = [newLatLng];
+    addToTrail([]);
+    console.log('🚌 Bus marker placed at', lat, lon);
+    return;
   }
+
+  const prev = S.busMarker.getLatLng();
+  const moved = Math.abs(prev.lat - lat) > 0.000005 || Math.abs(prev.lng - lon) > 0.000005;
+  if (!moved) return; // no meaningful change
+
+  const bearing = calcBearing(prev.lat, prev.lng, lat, lon);
+  S.busHeading = bearing;
   S.busLatLng = newLatLng;
 
-  // Pan map to keep bus visible
-  try {
-    const bounds = S.map.getBounds();
-    if (!bounds.contains(newLatLng)) {
-      S.map.panTo(newLatLng, { animate: true, duration: 1.5 });
-    }
-  } catch (e) { }
-}
+  // ── Try to get road-snapped path from OSRM, fall back to direct ──
+  const animDuration = 3500; // ms — slightly longer than poller interval for smoothness
 
-let _animFrame = null;
-function animateMarker(marker, from, to, durationMs) {
-  if (_animFrame) cancelAnimationFrame(_animFrame);
-  const startTime = performance.now();
-  function frame(now) {
-    const t = Math.min((now - startTime) / durationMs, 1);
-    const lat = from.lat + (to.lat - from.lat) * easeInOut(t);
-    const lon = from.lng + (to.lng - from.lng) * easeInOut(t);
-    marker.setLatLng([lat, lon]);
-    if (t < 1) _animFrame = requestAnimationFrame(frame);
-    else { marker.setLatLng(to); _animFrame = null; }
-  }
-  _animFrame = requestAnimationFrame(frame);
+  getRoadPath(prev.lat, prev.lng, lat, lon).then(roadWaypoints => {
+    if (!S.map || !S.busMarker) return; // tracking stopped while we awaited
+
+    const waypoints = roadWaypoints || [prev, newLatLng];
+
+    // Add waypoints to the trail polyline
+    addToTrail(waypoints);
+
+    // Animate marker along the road (or straight line if OSRM failed)
+    animateAlongWaypoints(S.busMarker, waypoints, animDuration, bearing);
+
+    // Pan map softly to keep bus in view
+    try {
+      if (!S.map.getBounds().contains(newLatLng)) {
+        S.map.panTo(newLatLng, { animate: true, duration: 1.5, easeLinearity: 0.5 });
+      }
+    } catch (e) { }
+  });
 }
 function easeInOut(t) { return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t; }
 
@@ -666,7 +859,13 @@ function showMapView() {
 function showCodeEntryView() {
   q('#map-view').classList.add('hidden');
   q('#code-entry-view').classList.remove('hidden');
-  if (S.map) { S.map.remove(); S.map = null; S.busMarker = null; S.stopMarker = null; S.stopCircle = null; }
+  // Cancel road animation and clear trail before destroying the map
+  if (_animFrame) { cancelAnimationFrame(_animFrame); _animFrame = null; }
+  clearTrail();
+  if (S.map) {
+    S.map.remove();
+    S.map = null; S.busMarker = null; S.stopMarker = null; S.stopCircle = null;
+  }
 }
 
 // ─── TRACK INFO UPDATE ───────────────────────────────────────────
@@ -731,7 +930,11 @@ function setStopFromGPS() {
     S.alertedBusPos = null;
   }, err => {
     btn.disabled = false; btn.innerHTML = '<span class="pill-ico">📍</span> Set My Stop Location';
-    showToast('❌ GPS: ' + err);
+    if (err && err.code === 1) {
+      showToast('❌ GPS blocked — please allow location in browser/app settings.');
+    } else {
+      showToast('❌ GPS: ' + (err?.message || err));
+    }
   });
 }
 
@@ -767,7 +970,11 @@ function setHomeFromGPS() {
     showToast(`✅ Home saved (±${Math.round(accuracy)}m)`);
   }, err => {
     btn.disabled = false; btn.innerHTML = '<span class="pill-ico">📍</span> Set My Home Location';
-    showToast('❌ GPS: ' + err);
+    if (err && err.code === 1) {
+      showToast('❌ Location blocked! Open browser/app Settings → allow Location for this site.');
+    } else {
+      showToast('❌ GPS: ' + (err?.message || err));
+    }
   });
 }
 
@@ -822,16 +1029,22 @@ function startRobustSleepWatch() {
 
   function doWatch() {
     S.sleepWid = watchPos(
-      onSleepPos,
+      pos => { S.geoWatchRetries = 0; onSleepPos(pos); },
       err => {
         console.warn('Sleep GPS error:', err);
-        // Retry on non-permanent errors
+        // PERMISSION_DENIED (code 1) — no point retrying, ask user to unblock
+        if (err && err.code === 1) {
+          showToast('❌ Location blocked! Go to Settings → allow Location → then restart Sleep Mode.');
+          stopSleep();
+          return;
+        }
+        // Transient errors — retry up to 5 times
         if (S.sleepOn && S.geoWatchRetries < 5) {
           S.geoWatchRetries++;
           showToast(`⚠️ GPS signal weak, retrying (${S.geoWatchRetries}/5)...`);
-          navigator.geolocation.clearWatch(S.sleepWid);
+          if (S.sleepWid !== null) navigator.geolocation.clearWatch(S.sleepWid);
           S.geoWatchTimer = setTimeout(doWatch, 3000);
-        } else if (S.geoWatchRetries >= 5) {
+        } else if (S.sleepOn && S.geoWatchRetries >= 5) {
           showToast('❌ GPS unavailable after retries. Sleep mode stopped.');
           stopSleep();
         }
@@ -980,15 +1193,21 @@ function startRobustDriverWatch() {
   let retries = 0;
   function doWatch() {
     S.driverWid = watchPos(
-      onDriverPos,
+      pos => { retries = 0; onDriverPos(pos); },
       err => {
         console.warn('Driver GPS error:', err);
+        // PERMISSION_DENIED — stop immediately, no retries
+        if (err && err.code === 1) {
+          showToast('❌ Location blocked! Go to Settings → allow Location → then restart Driver Mode.');
+          stopDriver();
+          return;
+        }
         if (S.driverOn && retries < 5) {
           retries++;
           showToast(`⚠️ GPS weak, retrying (${retries}/5)...`);
-          navigator.geolocation.clearWatch(S.driverWid);
+          if (S.driverWid !== null) navigator.geolocation.clearWatch(S.driverWid);
           setTimeout(doWatch, 3000);
-        } else if (retries >= 5) {
+        } else if (S.driverOn && retries >= 5) {
           showToast('❌ GPS failed after 5 retries. Check GPS settings.');
         }
       }
@@ -1086,7 +1305,10 @@ function sendMissStopAlert() {
       q('#miss-stop-status').style.color = 'var(--red)';
     });
   }, err => {
-    q('#miss-stop-status').textContent = '❌ GPS: ' + err;
+    const msg = err?.code === 1
+      ? 'Location blocked — allow location in Settings first.'
+      : (err?.message || String(err));
+    q('#miss-stop-status').textContent = '❌ GPS: ' + msg;
     q('#miss-stop-status').style.color = 'var(--red)';
   });
 }
@@ -1151,7 +1373,7 @@ function getPos(ok, fail) {
   if (!navigator.geolocation) { fail('Geolocation not supported'); return; }
   navigator.geolocation.getCurrentPosition(
     ok,
-    e => fail(e.message || 'GPS error'),
+    e => fail(e),          // pass raw PositionError so callers can check .code
     { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }
   );
 }
@@ -1160,7 +1382,7 @@ function watchPos(ok, fail) {
   if (!navigator.geolocation) return null;
   return navigator.geolocation.watchPosition(
     ok,
-    e => fail(e.message || 'GPS error'),
+    e => fail(e),          // pass the raw PositionError object so callers can check .code
     { enableHighAccuracy: true, timeout: 30000, maximumAge: 3000 }
   );
 }
