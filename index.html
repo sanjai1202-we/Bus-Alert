@@ -193,6 +193,17 @@
                 <!-- Full-screen map -->
                 <div id="live-map" class="live-map"></div>
 
+                <!-- Floating Map Buttons (Manual Focus) -->
+                <div class="map-fab-group">
+                    <button class="map-fab focus-btn" id="btn-focus-me" onclick="focusMyLocation()"
+                        title="Center My Location">
+                        🧭
+                    </button>
+                    <button class="map-fab bus-btn" id="btn-focus-bus" onclick="focusBusSelection()" title="Track Bus">
+                        🚌
+                    </button>
+                </div>
+
                 <!-- Bottom sheet over map -->
                 <div class="map-sheet">
                     <div class="sheet-handle"></div>

@@ -1420,6 +1420,52 @@ body {
   box-shadow: 0 3px 10px rgba(220, 38, 38, .4);
 }
 
+/* ── Floating Map Buttons (FAB) ── */
+.map-fab-group {
+  position: absolute;
+  top: 45%;
+  right: 14px;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 500;
+}
+
+.map-fab {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 8px 30px rgba(17, 24, 39, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  cursor: pointer;
+  transition: all .3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.map-fab:active {
+  transform: scale(0.9);
+}
+
+.map-fab.focus-btn {
+  color: var(--primary);
+}
+
+.map-fab.bus-btn {
+  color: var(--green);
+}
+
+.map-fab:hover {
+  background: white;
+  box-shadow: 0 12px 40px rgba(17, 24, 39, 0.3);
+  transform: scale(1.1);
+}
+
 /* ================================================================
    DRIVER MODE
    ================================================================ */

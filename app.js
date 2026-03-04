@@ -522,18 +522,25 @@ function stopBusPoller() {
 
 // Refresh button handler
 function refreshTracking() {
-  if (!S.trackOn || !S.trackedId || !S.db) {
+  if (!S.trackOn || !S.db) {
     showToast('⚠️ Not tracking any bus.');
     return;
   }
+  // If we have a trackedId in state but the button check failed, rely on S.trackedId
+  const tid = S.trackedId;
+  if (!tid) {
+    showToast('⚠️ No bus selected.');
+    return;
+  }
+
   showToast('🔄 Refreshing bus location...');
   const btn = q('#btn-refresh-map');
   if (btn) { btn.classList.add('spinning'); setTimeout(() => btn.classList.remove('spinning'), 1000); }
 
-  S.db.ref(`buses/${S.trackedId}`).once('value', snap => {
+  S.db.ref(`buses/${tid}`).once('value', snap => {
     const data = snap.val();
     if (data) {
-      S.allBuses[S.trackedId] = data;
+      S.allBuses[tid] = data;
       if (data.location && data.location.lat && data.location.lon) {
         moveBusOnMap(data.location.lat, data.location.lon);
         updateTrackInfo(data.location);
@@ -542,7 +549,9 @@ function refreshTracking() {
         showToast('⚠️ Bus has no GPS signal yet.');
       }
     } else {
-      showToast('❌ Bus data not found.');
+      showToast('❌ Bus session ended or not found.');
+      // Auto-stop if data is missing
+      stopTracking();
     }
   });
 }
@@ -560,6 +569,17 @@ function stopTrackingInner(silent) {
   S.trackAlerted = false;
   S.alertedBusPos = null;
   S.busHeading = 0;
+
+  // CLEAR STOP/HOME MARKER as requested by user ("it should remove that mark from map")
+  S.stopLoc = null;
+  lsSave('ba_stop', null);
+  q('#stop-coord-tag')?.classList.add('hidden');
+  q('#btn-set-stop')?.classList.remove('hidden');
+
+  if (S.stopMarker) { S.map?.removeLayer(S.stopMarker); S.stopMarker = null; }
+  if (S.stopCircle) { S.map?.removeLayer(S.stopCircle); S.stopCircle = null; }
+  if (S.userMarker) { S.map?.removeLayer(S.userMarker); S.userMarker = null; }
+
   stopBusPoller();
   // Cancel any in-flight road animation
   if (_animFrame) { cancelAnimationFrame(_animFrame); _animFrame = null; }
@@ -842,13 +862,33 @@ function drawStopMarker(lat, lon) {
       fillOpacity: 0.15, weight: 2, dashArray: '6,4',
     }).addTo(S.map);
   }
-  if (S.busMarker) {
-    try {
-      S.map.fitBounds(L.latLngBounds([S.busMarker.getLatLng(), [lat, lon]]).pad(0.3));
-    } catch (e) { }
-  } else {
-    S.map.setView([lat, lon], 14, { animate: true });
+}
+
+// ─── MAP CONTROLS (Focus buttons) ───
+let _userWideId = null;
+function focusMyLocation() {
+  if (!S.map) return;
+  showToast('🔍 Locating you...');
+  getPos(pos => {
+    const { latitude: lat, longitude: lon } = pos.coords;
+    if (!S.userMarker) {
+      S.userMarker = L.circleMarker([lat, lon], {
+        radius: 8, color: 'white', fillColor: '#3b82f6', fillOpacity: 1, weight: 3
+      }).addTo(S.map);
+      S.userMarker.bindPopup("You are here").openPopup();
+    } else {
+      S.userMarker.setLatLng([lat, lon]);
+    }
+    S.map.setView([lat, lon], 17, { animate: true });
+  }, err => showToast('❌ Location failed: ' + (err.message || 'Check GPS settings')));
+}
+
+function focusBusSelection() {
+  if (!S.map || !S.busMarker) {
+    showToast('⚠️ Bus position unknown yet.');
+    return;
   }
+  S.map.setView(S.busMarker.getLatLng(), 16, { animate: true });
 }
 
 // ─── SHOW/HIDE VIEWS ─────────────────────────────────────────────
