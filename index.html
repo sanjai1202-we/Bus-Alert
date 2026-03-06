@@ -234,71 +234,11 @@
 
                     <!-- Distance + stop setup -->
                     <div class="sheet-body">
-                        <div class="sheet-dist-row">
-                            <div class="sheet-dist-box">
-                                <div class="sheet-dist-num" id="map-dist-val">--</div>
-                                <div class="sheet-dist-lbl">km to your stop</div>
-                            </div>
-                            <div class="sheet-dist-box">
-                                <div class="sheet-dist-num" id="map-eta-val">--</div>
-                                <div class="sheet-dist-lbl">minutes (est.)</div>
-                            </div>
-                        </div>
-
-                        <div class="sheet-stop-row">
-                            <button class="pill-btn" id="btn-set-stop" onclick="setStopFromGPS()">
-                                <span class="pill-ico">📍</span> Set My Stop Location
-                            </button>
-                            <div class="coord-tag hidden" id="stop-coord-tag">
-                                <span class="coord-check">✅</span><span id="stop-coord-text"></span>
-                                <button class="edit-loc-btn" onclick="editStopLocation()" title="Change stop">✏️
-                                    Edit</button>
-                            </div>
-                        </div>
-
-                        <div class="slider-wrap" style="margin-top:6px">
-                            <span style="font-size:.78rem;color:var(--muted);min-width:100px">Alert radius</span>
-                            <input type="range" id="track-radius" min="0.3" max="3" step="0.1" value="1"
-                                oninput="updateRadius('track')" />
-                            <span class="slider-val" id="track-radius-val">1.0 km</span>
-                        </div>
-
-                        <div class="toggle-item" style="margin-top:4px">
-                            <span style="font-size:.85rem;color:var(--muted)">Vibration</span>
-                            <label class="tog"><input type="checkbox" id="track-vibe" checked /><span
-                                    class="tog-slider"></span></label>
-                        </div>
-                        <div class="toggle-item">
-                            <span style="font-size:.85rem;color:var(--muted)">Sound</span>
-                            <label class="tog"><input type="checkbox" id="track-sound" checked /><span
-                                    class="tog-slider"></span></label>
-                        </div>
-
-                        <div class="map-hint" id="map-status-hint">📡 Waiting for bus GPS signal...</div>
-
-                        <!-- Alert active banner with manual stop -->
-                        <div class="track-alert-banner hidden" id="track-alert-banner">
-                            <div class="tab-inner">
-                                <span>🔔 BUS NEAR YOUR STOP!</span>
-                                <button class="tal-stop-btn" onclick="stopSosAlarm('track')">✋ Stop Alarm</button>
-                            </div>
-                        </div>
+                        <div class="map-hint" id="map-status-hint" style="margin-top:10px;">📡 Waiting for bus GPS
+                            signal...</div>
                     </div>
                 </div>
 
-                <!-- SOS Alert overlay (track mode) -->
-                <div class="sos-overlay hidden" id="track-sos">
-                    <div class="sos-pulse-ring"></div>
-                    <div class="sos-pulse-ring delay1"></div>
-                    <div class="sos-content">
-                        <div class="sos-icon">🚌</div>
-                        <div class="sos-title">BUS IS NEAR!</div>
-                        <div class="sos-sub">Get ready at your stop — bus approaching!</div>
-                        <button class="sos-stop-btn" onclick="stopSosAlarm('track')">
-                            ✋ I'm Ready — Stop Alarm
-                        </button>
-                    </div>
-                </div>
             </div>
         </section>
 
@@ -308,39 +248,31 @@
                 <div class="hero-emoji">🚍</div>
                 <div class="hero-text">
                     <h2>Driver Mode</h2>
-                    <p>Enter your bus code from admin to go live.</p>
+                    <p>Enter your 4-digit PIN to go live.</p>
                 </div>
             </div>
 
-            <!-- Driver Login (code entry) — shown before going live -->
-            <div id="driver-login-view">
-                <div class="block">
-                    <div class="block-label">Enter Bus Code</div>
-                    <p style="font-size:.78rem;color:var(--muted2);margin-bottom:8px">
-                        Enter the code shared by your admin to access your bus details.
-                    </p>
-                    <input class="code-input" id="driver-code-input" placeholder="e.g. KR7M" maxlength="6"
-                        oninput="this.value=this.value.toUpperCase()"
-                        onkeydown="if(event.key==='Enter')driverLoginByCode()" />
-                    <button class="main-btn" style="margin-top:8px;padding:12px;font-size:.88rem"
-                        onclick="driverLoginByCode()">🔍 Verify Code</button>
-                    <div id="driver-code-status"
-                        style="font-size:.8rem;text-align:center;min-height:20px;margin-top:6px"></div>
+            <!-- Driver Login (PIN entry) -->
+            <div id="driver-login-view" class="block">
+                <div class="block-label" style="margin-bottom:8px;">Driver Login</div>
+                <input class="field" type="password" id="driver-pin-input" placeholder="e.g. 1234" maxlength="4"
+                    onkeydown="if(event.key==='Enter')verifyDriverPin()" />
+                <button class="main-btn" style="margin-top:12px;padding:12px;font-size:1rem"
+                    onclick="verifyDriverPin()">🔑 Enter PIN</button>
+                <div id="driver-code-status" style="font-size:.8rem;text-align:center;min-height:20px;margin-top:6px">
                 </div>
+            </div>
 
-                <!-- Pre-filled bus info card (shown after code verified) -->
-                <div id="driver-bus-preview" class="hidden" style="margin-top:4px">
-                    <div class="block" style="border-color:#86efac;background:#f0fdf4">
-                        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
-                            <span style="font-size:1.4rem">🚌</span>
-                            <div>
-                                <div style="font-weight:800;font-size:1rem" id="dp-busnum">--</div>
-                                <div style="font-size:.78rem;color:var(--muted2)" id="dp-route">--</div>
-                            </div>
-                        </div>
-                        <div style="font-size:.75rem;color:var(--muted2)" id="dp-stops"></div>
-                    </div>
-                </div>
+            <!-- Create Bus Form (shown after PIN verified) -->
+            <div id="driver-create-bus-view" class="block hidden">
+                <div class="block-label">Enter Bus Details</div>
+                <input class="field" id="new-bus-num" placeholder="Bus Number (e.g. TN23 AB1234)" />
+                <input class="field" id="new-bus-route" placeholder="Route (e.g. Ambur → College)"
+                    style="margin-top:8px" />
+                <input class="field" id="new-bus-stops" placeholder="Stops (comma separated)" style="margin-top:8px" />
+                <button class="main-btn driver-btn" id="btn-driver" style="margin-top:12px;" onclick="toggleDriver()">
+                    <span id="driver-btn-label">🟢 &nbsp;Go Live — Share Location</span>
+                </button>
             </div>
 
             <!-- Live stats card (shown when live) -->
@@ -368,13 +300,6 @@
                 </div>
                 <div class="dlc-coords" id="dlc-coords">Fetching GPS...</div>
 
-                <!-- Access Code Display (for students) -->
-                <div class="access-code-box">
-                    <div class="acb-label">📢 Share this code with students:</div>
-                    <div class="acb-code" id="dlc-access-code">----</div>
-                    <div class="acb-hint">Students enter this code to track your bus</div>
-                </div>
-
                 <!-- Missed-Stop Alert Notification (for driver) -->
                 <div class="driver-alert-card hidden" id="driver-alert-card">
                     <div class="dac-icon">🆘</div>
@@ -388,40 +313,11 @@
                         <button class="dac-dismiss-btn" onclick="driverDismissAlert()">✕</button>
                     </div>
                 </div>
-            </div>
-
-            <!-- Go Live button -->
-            <button class="main-btn driver-btn" id="btn-driver" onclick="toggleDriver()">
-                <span id="driver-btn-label">🟢 &nbsp;Go Live — Share Location</span>
-            </button>
         </section>
 
     </div>
 
-    <!-- Code Verify Modal (shown when tapping Track from search results) -->
-    <div id="code-verify-modal" class="modal-bg hidden">
-        <div class="modal-box">
-            <div class="modal-title">🔑 Enter Bus Code</div>
-            <p class="modal-desc">
-                Enter the <strong>4-digit code</strong> your driver shared.<br>
-                Only students with the correct code can track this bus.
-            </p>
-            <div class="cv-bus-info" id="cv-bus-info"></div>
-            <div class="block">
-                <div class="block-label">Access Code</div>
-                <input class="code-input" id="cv-code-input" placeholder="e.g. KR7M" maxlength="6"
-                    oninput="this.value=this.value.toUpperCase()" onkeydown="if(event.key==='Enter')verifyAndTrack()" />
-            </div>
-            <div class="cv-error hidden" id="cv-error">❌ Wrong code. Ask your driver for today's code.</div>
-            <div class="modal-actions">
-                <button class="pill-btn" onclick="closeCodeVerifyModal()">Cancel</button>
-                <button class="main-btn" onclick="verifyAndTrack()"
-                    style="flex:1;padding:13px;background:var(--track-accent);color:white">
-                    🔓 Verify &amp; Track
-                </button>
-            </div>
-        </div>
-    </div>
+
 
     <!-- Miss-Stop Modal -->
     <div id="miss-stop-modal" class="modal-bg hidden">

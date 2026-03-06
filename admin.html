@@ -602,29 +602,7 @@
             font-weight: 600;
         }
 
-        .ip-code-box {
-            background: var(--bg);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 8px 12px;
-            margin-top: 10px;
-            text-align: center;
-        }
 
-        .ip-code-label {
-            font-size: .68rem;
-            color: var(--sub);
-            text-transform: uppercase;
-            letter-spacing: .5px;
-        }
-
-        .ip-code-val {
-            font-size: 1.6rem;
-            font-weight: 800;
-            font-family: monospace;
-            color: var(--primary);
-            letter-spacing: 3px;
-        }
 
         .ip-focus-btn {
             margin-top: 10px;
@@ -962,7 +940,6 @@
             <!-- Right: stats + sidebar toggle + logout -->
             <div class="admin-actions">
                 <div class="admin-stat-badge">🟢 <span id="live-count">0</span> Live</div>
-                <div class="admin-stat-badge">📋 <span id="total-count" style="color:var(--sub)">0</span></div>
                 <button class="hdr-btn" id="sidebar-toggle-btn" onclick="toggleSidebar()" title="Toggle Panel">
                     ☰<span class="btn-label"> Panel</span>
                 </button>
@@ -994,7 +971,6 @@
                         Live</button>
                     <button class="sidebar-tab" id="stab-history" onclick="switchSidebarTab('history')">📜
                         History</button>
-                    <button class="sidebar-tab" id="stab-manage" onclick="switchSidebarTab('manage')">⚙️ Manage</button>
                 </div>
 
                 <!-- Tab 1: Live Buses -->
@@ -1030,37 +1006,7 @@
                     </div>
                 </div>
 
-                <!-- Tab 3: Management -->
-                <div class="sidebar-panel" id="spanel-manage">
-                    <div class="sidebar-header">MANAGE BUS FLEET</div>
-                    <div class="manage-scroll" style="overflow-y:auto; flex:1">
-                        <!-- Create New Bus Profile -->
-                        <div class="create-bus-section">
-                            <div class="create-bus-title">➕ Register New Bus</div>
-                            <div class="create-bus-form">
-                                <input class="admin-input" type="text" id="adm-bus-num"
-                                    placeholder="Bus Number (e.g. TN 23 AB 1234)" />
-                                <input class="admin-input" type="text" id="adm-bus-route"
-                                    placeholder="Route (e.g. Ambur → College)" />
-                                <input class="admin-input" type="text" id="adm-bus-stops"
-                                    placeholder="Stops (comma-separated, e.g. Ambur, Vellore)" />
-                                <button class="create-bus-btn" onclick="createBusProfile()">🚌 Create Bus & Generate
-                                    Code</button>
-                            </div>
-                            <!-- Result message area -->
-                            <div id="code-result" style="display:none; margin-top:12px"></div>
-                        </div>
-                        <!-- Registered List -->
-                        <div style="padding: 12px 16px;">
-                            <div class="create-bus-title"
-                                style="font-size:.75rem; font-weight:700; color:var(--sub); margin-bottom:10px">📋
-                                Registered Buses</div>
-                            <div id="profile-list" style="display:flex; flex-direction:column; gap:8px">
-                                <div class="no-alert">No buses registered yet</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <!-- Extracted Content -->
             </div>
 
             <!-- Info Panel -->
@@ -1077,10 +1023,6 @@
                             id="ip-accuracy">--</span></div>
                     <div class="ip-stat-row"><span class="ip-stat-label">Coords</span><span class="ip-stat-val"
                             id="ip-coords" style="font-size:.72rem;font-family:monospace">--</span></div>
-                </div>
-                <div class="ip-code-box">
-                    <div class="ip-code-label">Student Access Code</div>
-                    <div class="ip-code-val" id="ip-code">----</div>
                 </div>
                 <button class="ip-focus-btn" onclick="focusSelected()">📍 Focus on Map</button>
             </div>
@@ -1160,25 +1102,7 @@
         })();
 
 
-        // ── DETERMINISTIC CODE GENERATOR (same as app.js) ──
-        function generateAccessCode(busNum) {
-            const today = new Date();
-            const dayStr = `${today.getFullYear()}${today.getMonth()}${today.getDate()}`;
-            const seed = busNum.replace(/\s+/g, '') + dayStr;
-            let hash = 0;
-            for (let i = 0; i < seed.length; i++) {
-                hash = ((hash << 5) - hash) + seed.charCodeAt(i);
-                hash |= 0;
-            }
-            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-            let code = '';
-            let h = Math.abs(hash);
-            for (let i = 0; i < 4; i++) {
-                code += chars[h % chars.length];
-                h = Math.floor(h / chars.length);
-            }
-            return code;
-        }
+
 
         function doLogin() {
             const user = document.getElementById('adm-user').value.trim();
@@ -1214,7 +1138,6 @@
                 db = window.firebase.database();
                 listenBuses();
                 listenAlerts();
-                listenProfiles();
             });
         }
 
@@ -1244,82 +1167,7 @@
             });
         }
 
-        // ── BUS PROFILES (Admin creates these) ──
-        function listenProfiles() {
-            db.ref('bus_profiles').on('value', snap => {
-                allProfiles = snap.val() || {};
-                renderProfiles();
-            });
-        }
 
-        function createBusProfile() {
-            const num = document.getElementById('adm-bus-num').value.trim();
-            const route = document.getElementById('adm-bus-route').value.trim();
-            const stopsRaw = document.getElementById('adm-bus-stops').value.trim();
-            const stops = stopsRaw.split(',').map(s => s.trim()).filter(Boolean);
-
-            if (!num || !route) { alert('⚠️ Enter bus number and route!'); return; }
-            if (!db) { alert('⏳ Firebase not connected yet.'); return; }
-
-            const code = generateAccessCode(num);
-            const profileId = 'profile_' + num.replace(/\s+/g, '_').toUpperCase();
-
-            const profileData = {
-                busNumber: num,
-                route: route,
-                stops: stops,
-                accessCode: code,
-                createdAt: Date.now(),
-                createdBy: 'admin'
-            };
-
-            db.ref(`bus_profiles/${profileId}`).set(profileData).then(() => {
-                // Show generated code
-                const resultEl = document.getElementById('code-result');
-                resultEl.style.display = 'block';
-                resultEl.innerHTML = `
-                    <div class="code-result-box">
-                        <div class="code-result-label">Driver & Student Code</div>
-                        <div class="code-result-val">${code}</div>
-                        <div class="code-result-hint">Share this code with the driver.<br>Same code for both driver login and student tracking.</div>
-                    </div>`;
-
-                // Clear form
-                document.getElementById('adm-bus-num').value = '';
-                document.getElementById('adm-bus-route').value = '';
-                document.getElementById('adm-bus-stops').value = '';
-
-                // Auto-hide after 10s
-                setTimeout(() => { resultEl.style.display = 'none'; }, 10000);
-            }).catch(e => alert('❌ Error: ' + e.message));
-        }
-
-        function renderProfiles() {
-            const list = document.getElementById('profile-list');
-            const entries = Object.entries(allProfiles);
-            if (!entries.length) {
-                list.innerHTML = '<div class="no-alert">No buses registered yet.<br>Create one above.</div>';
-                return;
-            }
-            list.innerHTML = entries.map(([id, p]) => `
-                <div class="profile-card">
-                    <div class="pc-top">
-                        <span class="pc-num">🚌 ${esc(p.busNumber || '--')}</span>
-                        <span class="pc-code">${p.accessCode || '----'}</span>
-                    </div>
-                    <div class="pc-route">📍 ${esc(p.route || '--')}</div>
-                    <div class="pc-stops">🚏 ${(p.stops || []).join(', ') || 'No stops'}</div>
-                    <div class="pc-actions">
-                        <button class="pc-del-btn" onclick="deleteProfile('${id}')">🗑 Delete</button>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        function deleteProfile(id) {
-            if (!confirm('Delete this bus profile? The driver will no longer be able to use its code.')) return;
-            db.ref(`bus_profiles/${id}`).remove();
-        }
 
         // ── LIVE BUSES TRACKING ──
 
@@ -1384,7 +1232,6 @@
             }
             entries.sort((a, b) => (b[1].location?.timestamp || 0) - (a[1].location?.timestamp || 0));
             list.innerHTML = entries.map(([id, b]) => {
-                const code = b.accessCode || '----';
                 return `<div class="bus-row${selectedId === id ? ' selected' : ''}" onclick="selectBus('${id}')">
       <div class="br-top">
         <span class="br-num">🚌 ${esc(b.busNumber || '--')}</span>
@@ -1395,7 +1242,6 @@
         <span>⏱ ${timeAgo(b.location?.timestamp)}</span>
         ${b.location ? `<span>±${Math.round(b.location.accuracy || 0)}m</span>` : ''}
       </div>
-      <div class="br-code">CODE: ${code}</div>
     </div>`;
             }).join('');
         }
@@ -1410,7 +1256,7 @@
             }
             entries.sort((a, b) => (b[1].location?.timestamp || 0) - (a[1].location?.timestamp || 0));
             list.innerHTML = entries.map(([id, b]) => {
-                return `<div class="bus-row offline" onclick="selectBus('${id}')">
+                return `< div class="bus-row offline" onclick = "selectBus('${id}')" >
       <div class="br-top">
         <span class="br-num">🚍 ${esc(b.busNumber || '--')}</span>
         <span class="br-status offline">ENDED</span>
@@ -1419,14 +1265,14 @@
       <div class="br-meta">
         <span>⏱ Last seen: ${timeAgo(b.location?.timestamp)}</span>
       </div>
-    </div>`;
+    </div > `;
             }).join('');
         }
 
         function clearAllHistory() {
             if (!confirm('Delete all past bus tracking sessions?')) return;
             Object.keys(historyBuses).forEach(id => {
-                db.ref(`buses/${id}`).remove();
+                db.ref(`buses / ${id} `).remove();
                 if (markers[id]) { map.removeLayer(markers[id]); delete markers[id]; }
             });
         }
@@ -1447,9 +1293,8 @@
             document.getElementById('ip-route').textContent = b.route || '--';
             document.getElementById('ip-status').textContent = isLive ? '🟢 Live' : '🔴 Offline';
             document.getElementById('ip-updated').textContent = timeAgo(b.location?.timestamp);
-            document.getElementById('ip-accuracy').textContent = b.location ? `±${Math.round(b.location.accuracy || 0)}m` : '--';
-            document.getElementById('ip-coords').textContent = b.location ? `${b.location.lat.toFixed(4)}, ${b.location.lon.toFixed(4)}` : '--';
-            document.getElementById('ip-code').textContent = b.accessCode || '----';
+            document.getElementById('ip-accuracy').textContent = b.location ? `±${Math.round(b.location.accuracy || 0)} m` : '--';
+            document.getElementById('ip-coords').textContent = b.location ? `${b.location.lat.toFixed(4)}, ${b.location.lon.toFixed(4)} ` : '--';
             document.getElementById('info-panel').classList.add('show');
         }
 
@@ -1476,12 +1321,12 @@
                 const color = '#22c55e';
                 const icon = L.divIcon({
                     className: '',
-                    html: `<div style="background:${color};border:3px solid white;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;box-shadow:0 4px 14px rgba(0,0,0,.4)">🚌</div>`,
+                    html: `< div style = "background:${color};border:3px solid white;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;box-shadow:0 4px 14px rgba(0,0,0,.4)" >🚌</div > `,
                     iconSize: [36, 36], iconAnchor: [18, 18]
                 });
                 if (!markers[id]) {
                     markers[id] = L.marker([lat, lon], { icon }).addTo(map);
-                    markers[id].bindPopup(`<b>Bus ${b.busNumber}</b><br>${b.route || ''}<br><small>Code: ${b.accessCode || '--'}</small>`);
+                    markers[id].bindPopup(`< b > Bus ${b.busNumber}</b > <br>${b.route || ''}<br><small>Code: ${b.accessCode || '--'}</small>`);
                     markers[id].on('click', () => selectBus(id));
                 } else {
                     markers[id].setLatLng([lat, lon]);
@@ -1495,14 +1340,14 @@
             const entries = Object.entries(alerts).filter(([, a]) => a.active);
             if (!entries.length) { list.innerHTML = '<div class="no-alert">No active alerts</div>'; return; }
             list.innerHTML = entries.map(([id, a]) => `
-    <div class="alert-row-card">
-      <div class="alert-row-top">
-        <span class="alert-row-name">🆘 ${esc(a.studentName || 'Unknown')}</span>
-        <span class="alert-row-time">${timeAgo(a.timestamp)}</span>
-      </div>
-      <div class="alert-row-loc">📍 ${a.lat?.toFixed(4) || '?'}, ${a.lon?.toFixed(4) || '?'} — Bus ${esc(a.busNum || '?')}</div>
-    </div>
-  `).join('');
+                    <div class="alert-row-card">
+                        <div class="alert-row-top">
+                            <span class="alert-row-name">🆘 ${esc(a.studentName || 'Unknown')}</span>
+                            <span class="alert-row-time">${timeAgo(a.timestamp)}</span>
+                        </div>
+                        <div class="alert-row-loc">📍 ${a.lat?.toFixed(4) || '?'}, ${a.lon?.toFixed(4) || '?'} — Bus ${esc(a.busNum || '?')}</div>
+                    </div>
+                    `).join('');
             // Plot alert markers on map
             entries.forEach(([id, a]) => {
                 if (!a.lat || !a.lon) return;
@@ -1522,10 +1367,7 @@
         function updateCounts() {
             // Live = currently active buses sending GPS now
             const live = Object.values(allBuses).filter(b => b.active && b.location && (Date.now() - b.location.timestamp) < 5 * 60 * 1000).length;
-            // Total = registered bus profiles (unique buses, not repeated sessions)
-            const totalProfiles = Object.keys(allProfiles).length;
             document.getElementById('live-count').textContent = live;
-            document.getElementById('total-count').textContent = totalProfiles;
         }
 
         function refreshBuses() { if (db) db.ref('buses').once('value', snap => { allBuses = snap.val() || {}; renderSidebar(); updateMapMarkers(); updateCounts(); }); }

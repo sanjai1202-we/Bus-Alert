@@ -211,10 +211,8 @@ function lsSet(k, v) { localStorage.setItem(k, v); }
 
 function loadLocal() {
   const h = ls('ba_home'); if (h) { S.home = h; renderHomeCoord(); }
-  const s = ls('ba_stop'); if (s) { S.stopLoc = s; renderStopCoord(); }
   const sn = lsGet('ba_student_name'); if (sn) S.myStudentName = sn;
   const sr = lsGet('ba_sr'); if (sr) { q('#sleep-radius').value = sr; updateRadius('sleep'); }
-  const tr = lsGet('ba_tr'); if (tr) { q('#track-radius').value = tr; updateRadius('track'); }
 }
 
 // ─── FIREBASE ────────────────────────────────────────────────────
@@ -394,71 +392,12 @@ function renderBusList(query) {
 
 // ─── START / STOP TRACKING ───────────────────────────────────────
 
-// Called by search results → always shows code modal first
 function startTracking(busId) {
   if (!S.fbOk) { showToast('⏳ Firebase not connected yet.'); return; }
   // If already tracking this exact bus, just re-open map
   if (S.trackOn && S.trackedId === busId) { showMapView(); return; }
-  // Always require code verification
-  openCodeVerifyModal(busId);
-}
 
-// ── Code verify modal ──
-let _pendingBusId = null;
-
-function openCodeVerifyModal(busId) {
-  _pendingBusId = busId;
-  const bus = S.allBuses[busId] || {};
-  q('#cv-bus-info').innerHTML = `
-    <div style="display:flex;align-items:center;gap:10px;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:10px 12px;margin-bottom:2px">
-      <span style="font-size:1.4rem">🚌</span>
-      <div>
-        <div style="font-weight:700;font-size:.95rem">${esc(bus.busNumber || '--')}</div>
-        <div style="font-size:.76rem;color:var(--muted2)">${esc(bus.route || '--')}</div>
-      </div>
-    </div>`;
-  q('#cv-code-input').value = '';
-  q('#cv-error').classList.add('hidden');
-  q('#code-verify-modal').classList.remove('hidden');
-  setTimeout(() => q('#cv-code-input').focus(), 300);
-}
-
-function closeCodeVerifyModal() {
-  q('#code-verify-modal').classList.add('hidden');
-  _pendingBusId = null;
-}
-
-function verifyAndTrack() {
-  if (!_pendingBusId) return;
-  const entered = q('#cv-code-input').value.trim().toUpperCase();
-  if (!entered) { showToast('⚠️ Type the code first!'); return; }
-
-  const bus = S.allBuses[_pendingBusId];
-  const correctCode = bus?.accessCode;
-
-  if (!correctCode) {
-    // Bus has no code set (old entry) — allow through with a warning
-    showToast('ℹ️ No code set for this bus — contact driver.');
-    closeCodeVerifyModal();
-    _doStartTracking(_pendingBusId);
-    return;
-  }
-
-  if (entered !== correctCode) {
-    q('#cv-error').classList.remove('hidden');
-    q('#cv-code-input').style.borderColor = 'var(--red)';
-    setTimeout(() => q('#cv-code-input').style.borderColor = '', 1500);
-    return;
-  }
-
-  // ✅ Code correct!
-  q('#cv-error').classList.add('hidden');
-  closeCodeVerifyModal();
-  _doStartTracking(_pendingBusId);
-}
-
-// Internal — actually begins tracking (only called after code is verified)
-function _doStartTracking(busId) {
+  // No code verification needed anymore
   if (S.trackOn) stopTrackingInner(true);
 
   S.trackOn = true;
@@ -491,7 +430,6 @@ function _doStartTracking(busId) {
       moveBusOnMap(bus.location.lat, bus.location.lon);
       updateTrackInfo(bus.location);
     }
-    if (S.stopLoc) drawStopMarker(S.stopLoc.lat, S.stopLoc.lon);
 
     // Start polling as backup (Firebase listener may lag)
     startBusPoller(busId);
@@ -570,14 +508,6 @@ function stopTrackingInner(silent) {
   S.alertedBusPos = null;
   S.busHeading = 0;
 
-  // CLEAR STOP/HOME MARKER as requested by user ("it should remove that mark from map")
-  S.stopLoc = null;
-  lsSave('ba_stop', null);
-  q('#stop-coord-tag')?.classList.add('hidden');
-  q('#btn-set-stop')?.classList.remove('hidden');
-
-  if (S.stopMarker) { S.map?.removeLayer(S.stopMarker); S.stopMarker = null; }
-  if (S.stopCircle) { S.map?.removeLayer(S.stopCircle); S.stopCircle = null; }
   if (S.userMarker) { S.map?.removeLayer(S.userMarker); S.userMarker = null; }
 
   stopBusPoller();
@@ -849,21 +779,6 @@ function moveBusOnMap(lat, lon) {
 }
 function easeInOut(t) { return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t; }
 
-function drawStopMarker(lat, lon) {
-  if (!S.map) return;
-  const radius = parseFloat(q('#track-radius').value) * 1000;
-  if (S.stopMarker) {
-    S.stopMarker.setLatLng([lat, lon]);
-    S.stopCircle.setLatLng([lat, lon]).setRadius(radius);
-  } else {
-    S.stopMarker = L.marker([lat, lon], { icon: stopIcon() }).addTo(S.map);
-    S.stopCircle = L.circle([lat, lon], {
-      radius, color: '#dc2626', fillColor: '#fca5a5',
-      fillOpacity: 0.15, weight: 2, dashArray: '6,4',
-    }).addTo(S.map);
-  }
-}
-
 // ─── MAP CONTROLS (Focus buttons) ───
 let _userWideId = null;
 function focusMyLocation() {
@@ -914,90 +829,9 @@ function showCodeEntryView() {
 function updateTrackInfo(busLoc) {
   const t = timeAgo(busLoc.timestamp);
   q('#map-status-hint').textContent = `📡 Bus GPS updated ${t}`;
-
-  if (!S.stopLoc) {
-    q('#map-dist-val').textContent = '--';
-    q('#map-eta-val').textContent = '--';
-    return;
-  }
-
-  const dist = getDistance(busLoc.lat, busLoc.lon, S.stopLoc.lat, S.stopLoc.lon);
-  q('#map-dist-val').textContent = dist < 10 ? dist.toFixed(2) : Math.round(dist);
-
-  const etaMin = Math.round((dist / 30) * 60);
-  q('#map-eta-val').textContent = etaMin < 1 ? '<1' : etaMin;
-
-  const radius = parseFloat(q('#track-radius').value);
-
-  // ── ALERT: Bus enters stop radius ──
-  if (dist <= radius && !S.trackAlerted) {
-    S.trackAlerted = true;
-    S.alertedBusPos = { lat: busLoc.lat, lon: busLoc.lon };
-    if (q('#track-vibe').checked || q('#track-sound').checked) {
-      startSosAlarm('track');
-    } else {
-      // just show the banner without sound
-      q('#track-alert-banner')?.classList.remove('hidden');
-    }
-  }
-
-  // ── AUTO-RESET: Bus moved >1km past the alert point ──
-  if (S.trackAlerted && S.alertedBusPos) {
-    const distFromAlert = getDistance(busLoc.lat, busLoc.lon, S.alertedBusPos.lat, S.alertedBusPos.lon);
-    if (distFromAlert > 1.0) {
-      // Bus moved more than 1km from where it triggered alert → reset
-      S.trackAlerted = false;
-      S.alertedBusPos = null;
-      if (S.sosActive) stopSosAlarm('track');
-      q('#track-alert-banner')?.classList.add('hidden');
-      showToast('ℹ️ Bus moved past. Alert reset — tracking continues.');
-    }
-  }
 }
 
-// ─── STOP LOCATION ───────────────────────────────────────────────
-function setStopFromGPS() {
-  const btn = q('#btn-set-stop');
-  btn.disabled = true; btn.innerHTML = '⏳ Getting GPS...';
-  getPos(pos => {
-    const { latitude: lat, longitude: lon, accuracy } = pos.coords;
-    S.stopLoc = { lat, lon };
-    lsSave('ba_stop', { lat, lon });
-    renderStopCoord();
-    if (S.map) drawStopMarker(lat, lon);
-    if (S.stopCircle) S.stopCircle.setRadius(parseFloat(q('#track-radius').value) * 1000);
-    btn.disabled = false; btn.innerHTML = '<span class="pill-ico">📍</span> Set My Stop Location';
-    showToast(`✅ Stop set (±${Math.round(accuracy)}m)`);
-    S.trackAlerted = false;
-    S.alertedBusPos = null;
-  }, err => {
-    btn.disabled = false; btn.innerHTML = '<span class="pill-ico">📍</span> Set My Stop Location';
-    if (err && err.code === 1) {
-      showToast('❌ GPS blocked — please allow location in browser/app settings.');
-    } else {
-      showToast('❌ GPS: ' + (err?.message || err));
-    }
-  });
-}
 
-function editStopLocation() {
-  // Reset stop location so user can set it again
-  S.stopLoc = null;
-  lsSave('ba_stop', null);
-  q('#stop-coord-tag').classList.add('hidden');
-  q('#btn-set-stop').classList.remove('hidden');
-  if (S.stopMarker) { S.map?.removeLayer(S.stopMarker); S.stopMarker = null; }
-  if (S.stopCircle) { S.map?.removeLayer(S.stopCircle); S.stopCircle = null; }
-  S.trackAlerted = false;
-  S.alertedBusPos = null;
-  showToast('📍 Tap "Set My Stop Location" to update.');
-}
-
-function renderStopCoord() {
-  if (!S.stopLoc) return;
-  q('#stop-coord-text').textContent = `Stop: ${S.stopLoc.lat.toFixed(5)}, ${S.stopLoc.lon.toFixed(5)}`;
-  q('#stop-coord-tag').classList.remove('hidden');
-}
 
 // ─── SLEEP MODE ──────────────────────────────────────────────────
 function setHomeFromGPS() {
@@ -1132,96 +966,57 @@ function onSleepPos(pos) {
 }
 
 // ─── DRIVER MODE ─────────────────────────────────────────────────
-let _driverProfile = null;  // verified bus profile from admin
+const DRIVER_PIN = '1234';
+
+function verifyDriverPin() {
+  const pin = q('#driver-pin-input').value.trim();
+  if (pin !== DRIVER_PIN) {
+    showToast('❌ Invalid PIN. Please try again.');
+    q('#driver-code-status').textContent = 'Incorrect PIN';
+    q('#driver-code-status').style.color = 'var(--red)';
+    return;
+  }
+
+  // PIN is correct, show create bus view
+  showToast('✅ PIN Verified');
+  q('#driver-code-status').textContent = '';
+  q('#driver-login-view').classList.add('hidden');
+  q('#driver-create-bus-view').classList.remove('hidden');
+}
 
 function toggleDriver() { S.driverOn ? stopDriver() : startDriver(); }
 
-// ── Generate access code (same logic as admin) ──
-function generateAccessCode(busNum) {
-  const today = new Date();
-  const dayStr = `${today.getFullYear()}${today.getMonth()}${today.getDate()}`;
-  const seed = busNum.replace(/\s+/g, '') + dayStr;
-  let hash = 0;
-  for (let i = 0; i < seed.length; i++) {
-    hash = ((hash << 5) - hash) + seed.charCodeAt(i);
-    hash |= 0;
-  }
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  let code = '';
-  let h = Math.abs(hash);
-  for (let i = 0; i < 4; i++) {
-    code += chars[h % chars.length];
-    h = Math.floor(h / chars.length);
-  }
-  return code;
-}
-
-// Driver enters the code shared by admin
-function driverLoginByCode() {
-  const code = q('#driver-code-input').value.trim().toUpperCase();
-  if (!code) { showToast('⚠️ Enter the bus code!'); return; }
-  if (!S.fbOk) { showToast('⏳ Firebase not connected yet.'); return; }
-
-  const statusEl = q('#driver-code-status');
-  statusEl.textContent = '🔍 Looking up bus...';
-  statusEl.style.color = 'var(--muted2)';
-
-  // Search bus_profiles for matching accessCode
-  S.db.ref('bus_profiles').orderByChild('accessCode').equalTo(code).once('value', snap => {
-    const data = snap.val();
-    if (!data) {
-      statusEl.textContent = '❌ No bus found with this code. Check with your admin.';
-      statusEl.style.color = 'var(--red)';
-      q('#driver-bus-preview').classList.add('hidden');
-      _driverProfile = null;
-      return;
-    }
-
-    // Found the bus profile
-    const [profileId, profile] = Object.entries(data)[0];
-    _driverProfile = { ...profile, profileId };
-
-    statusEl.textContent = '✅ Bus found! Tap "Go Live" to start sharing.';
-    statusEl.style.color = 'var(--green)';
-
-    // Show bus preview
-    q('#dp-busnum').textContent = profile.busNumber || '--';
-    q('#dp-route').textContent = profile.route || '--';
-    q('#dp-stops').textContent = '🚏 ' + ((profile.stops || []).join(', ') || 'No stops listed');
-    q('#driver-bus-preview').classList.remove('hidden');
-
-    showToast(`✅ Bus ${profile.busNumber} loaded!`);
-  });
-}
-
 function startDriver() {
-  if (!_driverProfile) {
-    showToast('⚠️ Enter the bus code first and verify!');
+  const num = q('#new-bus-num').value.trim();
+  const route = q('#new-bus-route').value.trim();
+  const stopsRaw = q('#new-bus-stops').value.trim();
+
+  if (!num || !route) {
+    showToast('⚠️ Please enter Bus Number and Route');
     return;
   }
+
   if (!S.fbOk) { showToast('⏳ Firebase not connected yet.'); return; }
 
-  const { busNumber: num, route, stops, accessCode } = _driverProfile;
+  const stops = stopsRaw.split(',').map(s => s.trim()).filter(Boolean);
 
-  // The student tracking code is the SAME as the admin/driver code
-  S.driverAccessCode = accessCode;
   S.driverBusId = 'bus_' + num.replace(/\s+/g, '_').toUpperCase() + '_' + Date.now();
   S.driverUpdates = 0;
 
   S.db.ref(`buses/${S.driverBusId}`).set({
     busNumber: num, route, stops: stops || [], active: true,
-    location: null, startedAt: Date.now(), accessCode
+    location: null, startedAt: Date.now()
   }).then(() => {
     S.driverOn = true;
-    q('#driver-login-view').classList.add('hidden');
+    q('#driver-create-bus-view').classList.add('hidden');
     q('#driver-live-card').classList.remove('hidden');
     q('#dlc-busnum').textContent = 'Bus ' + num;
     q('#dlc-route').textContent = route;
-    q('#dlc-access-code').textContent = accessCode;
+    q('#dlc-access-code')?.classList.add('hidden'); // No more code needed
     q('#btn-driver').classList.add('stop-mode');
     q('#driver-btn-label').innerHTML = '🔴 &nbsp;Stop Sharing';
     setStatus('Driver Live 🟢', true);
-    showToast(`🟢 LIVE: Bus ${num} | Student Code: ${accessCode}`);
+    showToast(`🟢 LIVE: Bus ${num}`);
 
     startRobustDriverWatch();
     listenDriverAlerts();
@@ -1267,11 +1062,12 @@ function stopDriver() {
   q('#btn-driver').classList.remove('stop-mode');
   q('#driver-btn-label').innerHTML = '🟢 &nbsp;Go Live — Share Location';
   q('#driver-alert-card').classList.add('hidden');
-  // Reset driver profile so they can enter code again
-  _driverProfile = null;
-  q('#driver-bus-preview').classList.add('hidden');
-  q('#driver-code-input').value = '';
-  q('#driver-code-status').textContent = '';
+  q('#driver-create-bus-view').classList.add('hidden');
+  q('#driver-login-view').classList.remove('hidden');
+  q('#driver-pin-input').value = '';
+  q('#new-bus-num').value = '';
+  q('#new-bus-route').value = '';
+  q('#new-bus-stops').value = '';
   setStatus('Idle', false);
   showToast('⏹ Location sharing stopped.');
 }
